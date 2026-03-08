@@ -63,7 +63,12 @@ import {
   Camera,
   Upload,
   Info,
-  AlertTriangle
+  AlertTriangle,
+  Heart,
+  Star,
+  ShieldCheck,
+  Zap,
+  Gift
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -158,6 +163,24 @@ interface Translation {
   amountLabel: string;
   lowAmountError: string;
   paymentWarning: string;
+  purposeTitle: string;
+  purposeDesc: string;
+  advantagesTitle: string;
+  advantage1: string;
+  advantage1Desc: string;
+  advantage2: string;
+  advantage2Desc: string;
+  advantage3: string;
+  advantage3Desc: string;
+  howToTitle: string;
+  step1Title: string;
+  step1Desc: string;
+  step2Title: string;
+  step2Desc: string;
+  step3Title: string;
+  step3Desc: string;
+  persuasionTitle: string;
+  persuasionDesc: string;
 }
 
 const translations: Record<Language, Translation> = {
@@ -222,7 +245,25 @@ const translations: Record<Language, Translation> = {
     paymentNotice: "Please transfer exactly 50 RS to the account below.",
     amountLabel: "Amount Detected",
     lowAmountError: "The detected amount is less than 50 RS. Please transfer the full amount and upload the correct slip.",
-    paymentWarning: "Warning: Applications with payments less than 50 RS will be automatically rejected."
+    paymentWarning: "Warning: Applications with payments less than 50 RS will be automatically rejected.",
+    purposeTitle: "Our Purpose",
+    purposeDesc: "Pak-Islam Lottery is dedicated to making the dream of Hajj and Umrah accessible to everyone. We believe that financial constraints should not stand in the way of your spiritual journey.",
+    advantagesTitle: "Why Choose Us?",
+    advantage1: "100% Transparent",
+    advantage1Desc: "Every draw is conducted randomly and shared publicly for complete trust.",
+    advantage2: "Secure & Verified",
+    advantage2Desc: "Advanced AI verification ensures only legitimate entries are accepted.",
+    advantage3: "Life Changing",
+    advantage3Desc: "A small contribution of 50 RS can lead to a life-changing spiritual experience.",
+    howToTitle: "How to Participate",
+    step1Title: "Register",
+    step1Desc: "Sign in with Google and fill in your personal details accurately.",
+    step2Title: "Payment",
+    step2Desc: "Transfer exactly 50 RS to our official accounts provided in the form.",
+    step3Title: "Verification",
+    step3Desc: "Upload your payment slip. Our AI will verify it instantly.",
+    persuasionTitle: "Fulfill Your Umrah Desires",
+    persuasionDesc: "Imagine standing in front of the Holy Kaaba. For just 50 RS, you could be the next one chosen for this blessed journey. Don't let this chance slip away!"
   },
   ur: {
     title: "پاک اسلام حج و عمرہ قرعہ اندازی",
@@ -285,7 +326,25 @@ const translations: Record<Language, Translation> = {
     paymentNotice: "براہ کرم نیچے دیے گئے اکاؤنٹ میں ٹھیک 50 روپے منتقل کریں۔",
     amountLabel: "پتہ چلا رقم",
     lowAmountError: "پتہ چلا رقم 50 روپے سے کم ہے۔ براہ کرم پوری رقم منتقل کریں اور صحیح رسید اپ لوڈ کریں۔",
-    paymentWarning: "انتباہ: 50 روپے سے کم ادائیگی والی درخواستیں خود بخود مسترد کر دی جائیں گی۔"
+    paymentWarning: "انتباہ: 50 روپے سے کم ادائیگی والی درخواستیں خود بخود مسترد کر دی جائیں گی۔",
+    purposeTitle: "ہمارا مقصد",
+    purposeDesc: "پاک اسلام قرعہ اندازی کا مقصد حج اور عمرہ کے خواب کو ہر ایک کے لیے ممکن بنانا ہے۔ ہمارا ماننا ہے کہ مالی مشکلات آپ کے روحانی سفر کی راہ میں رکاوٹ نہیں ہونی چاہئیں۔",
+    advantagesTitle: "ہمیں کیوں منتخب کریں؟",
+    advantage1: "100٪ شفاف",
+    advantage1Desc: "ہر قرعہ اندازی مکمل اعتماد کے لیے رینڈم طریقے سے کی جاتی ہے اور عوامی طور پر شیئر کی جاتی ہے۔",
+    advantage2: "محفوظ اور تصدیق شدہ",
+    advantage2Desc: "جدید AI تصدیق اس بات کو یقینی بناتی ہے کہ صرف جائز اندراجات ہی قبول کیے جائیں۔",
+    advantage3: "زندگی بدل دینے والا",
+    advantage3Desc: "صرف 50 روپے کا چھوٹا سا تعاون ایک زندگی بدل دینے والے روحانی تجربے کا باعث بن سکتا ہے۔",
+    howToTitle: "شرکت کیسے کریں",
+    step1Title: "رجسٹریشن",
+    step1Desc: "گوگل کے ساتھ سائن ان کریں اور اپنی ذاتی تفصیلات درست طریقے سے پُر کریں۔",
+    step2Title: "ادائیگی",
+    step2Desc: "فارم میں فراہم کردہ ہمارے آفیشل اکاؤنٹس میں ٹھیک 50 روپے منتقل کریں۔",
+    step3Title: "تصدیق",
+    step3Desc: "اپنی ادائیگی کی رسید اپ لوڈ کریں۔ ہمارا AI فوری طور پر اس کی تصدیق کرے گا۔",
+    persuasionTitle: "اپنی عمرہ کی خواہشات پوری کریں",
+    persuasionDesc: "خانہ کعبہ کے سامنے کھڑے ہونے کا تصور کریں۔ صرف 50 روپے میں، آپ اس بابرکت سفر کے لیے منتخب ہونے والے اگلے فرد ہو سکتے ہیں۔ اس موقع کو ہاتھ سے نہ جانے دیں!"
   }
 };
 
@@ -635,6 +694,92 @@ export default function App() {
               </div>
             </section>
 
+            {/* Purpose & Persuasion Section */}
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                className="space-y-6"
+              >
+                <div className="bg-white p-8 rounded-3xl border border-emerald-100 shadow-sm space-y-4">
+                  <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600">
+                    <Heart className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-emerald-900">{t.purposeTitle}</h3>
+                  <p className="text-slate-600 leading-relaxed">{t.purposeDesc}</p>
+                </div>
+
+                <div className="bg-emerald-900 text-white p-8 rounded-3xl shadow-xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+                  <div className="relative z-10 space-y-4">
+                    <h3 className="text-2xl font-bold">{t.persuasionTitle}</h3>
+                    <p className="text-emerald-100/80 leading-relaxed">{t.persuasionDesc}</p>
+                    <div className="flex items-center gap-2 text-amber-400 font-bold">
+                      <Star className="w-5 h-5 fill-current" />
+                      <span>Just 50 RS can change your life!</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                className="space-y-6"
+              >
+                <h3 className="text-2xl font-bold text-emerald-900 px-2">{t.advantagesTitle}</h3>
+                <div className="space-y-4">
+                  {[
+                    { title: t.advantage1, desc: t.advantage1Desc, icon: ShieldCheck },
+                    { title: t.advantage2, desc: t.advantage2Desc, icon: Zap },
+                    { title: t.advantage3, desc: t.advantage3Desc, icon: Gift },
+                  ].map((adv, i) => (
+                    <div key={i} className="flex gap-4 p-4 bg-white rounded-2xl border border-emerald-50 hover:border-emerald-200 transition-colors">
+                      <div className="shrink-0 w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+                        <adv.icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-emerald-900">{adv.title}</h4>
+                        <p className="text-xs text-slate-500">{adv.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            </section>
+
+            {/* How to Participate Section */}
+            <section className="bg-white rounded-3xl p-8 border border-emerald-100 shadow-sm space-y-8">
+              <div className="text-center space-y-2">
+                <h3 className="text-2xl font-bold text-emerald-900">{t.howToTitle}</h3>
+                <div className="w-20 h-1 bg-emerald-500 mx-auto rounded-full" />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+                {[
+                  { step: "01", title: t.step1Title, desc: t.step1Desc, icon: UserIcon },
+                  { step: "02", title: t.step2Title, desc: t.step2Desc, icon: CreditCard },
+                  { step: "03", title: t.step3Title, desc: t.step3Desc, icon: Camera },
+                ].map((step, i) => (
+                  <div key={i} className="relative space-y-4 text-center">
+                    <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 mx-auto relative">
+                      <step.icon className="w-8 h-8" />
+                      <span className="absolute -top-1 -right-1 bg-emerald-600 text-white text-[10px] font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-white">
+                        {step.step}
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-emerald-900">{step.title}</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed">{step.desc}</p>
+                    {i < 2 && (
+                      <div className="hidden sm:block absolute top-8 -right-4 w-8 h-px bg-emerald-100" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+
             {/* Transparency Section */}
             <section className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -945,24 +1090,39 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
       reader.onloadend = async () => {
         const base64 = (reader.result as string).split(',')[1];
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+        
+        const receiverTitle = formData.paymentMethod === 'easypaisa' ? settings.easyPaisaTitle : 
+                             formData.paymentMethod === 'jazzcash' ? settings.jazzCashTitle : 'Pak Islam';
+        
+        const currentTime = new Date().toISOString();
+
         const response = await ai.models.generateContent({
           model: "gemini-3-flash-preview",
           contents: [
             {
               parts: [
-                { text: `Analyze this image. 
-                1. Is this a valid payment slip/receipt from EasyPaisa, JazzCash, or a Bank? (Yes/No)
-                2. If yes, extract the Transaction ID (TID).
-                3. If yes, extract the Date and Time of transaction.
-                4. If yes, extract the Amount transferred (as a number).
+                { text: `FAST SCAN:
+                Current Time: ${currentTime}
+                Sender: ${formData.senderName} (${formData.senderNumber})
+                Receiver: ${receiverTitle}
                 
-                Return the result in JSON format:
+                Rules:
+                1. Valid EasyPaisa/JazzCash/Bank slip?
+                2. Sender Name/Number match?
+                3. Receiver Name match?
+                4. Time within 30 mins of ${currentTime}?
+                5. Amount >= 50 RS?
+                
+                JSON:
                 {
                   "isValid": boolean,
-                  "tid": "string or null",
-                  "time": "string or null",
-                  "amount": number or null,
-                  "reason": "if invalid, why?"
+                  "tid": "string",
+                  "time": "string",
+                  "amount": number,
+                  "senderMatch": boolean,
+                  "receiverMatch": boolean,
+                  "timeMatch": boolean,
+                  "reason": "Urdu explanation if fail"
                 }` },
                 { inlineData: { mimeType: file.type, data: base64 } }
               ]
@@ -972,14 +1132,43 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
         });
         
         const result = JSON.parse(response.text || '{}');
-        if (result.isValid && result.tid) {
-          if (result.amount !== null && result.amount < 50) {
-            setDetectionStatus('error');
-            alert(t.lowAmountError);
-            setDetecting(false);
-            return;
-          }
+        
+        if (!result.isValid) {
+          setDetectionStatus('error');
+          alert(result.reason || "Invalid slip.");
+          setDetecting(false);
+          return;
+        }
 
+        if (!result.senderMatch) {
+          setDetectionStatus('error');
+          alert("بھیجنے والے کا نام یا نمبر فارم سے مطابقت نہیں رکھتا۔");
+          setDetecting(false);
+          return;
+        }
+
+        if (!result.receiverMatch) {
+          setDetectionStatus('error');
+          alert(`رقم غلط اکاؤنٹ میں بھیجی گئی ہے۔ وصول کنندہ کا نام "${receiverTitle}" ہونا چاہیے۔`);
+          setDetecting(false);
+          return;
+        }
+
+        if (!result.timeMatch) {
+          setDetectionStatus('error');
+          alert("ٹرانزیکشن پرانی ہے۔ رسید صرف پچھلے 30 منٹ کی ہونی چاہیے۔");
+          setDetecting(false);
+          return;
+        }
+
+        if (result.amount !== null && result.amount < 50) {
+          setDetectionStatus('error');
+          alert(t.lowAmountError);
+          setDetecting(false);
+          return;
+        }
+
+        if (result.tid) {
           setFormData(prev => ({ 
             ...prev, 
             tid: result.tid,
@@ -989,7 +1178,7 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
           setDetectionStatus('success');
         } else {
           setDetectionStatus('error');
-          if (result.reason) alert(result.reason);
+          alert("TID detected could not be verified.");
         }
         setDetecting(false);
       };
