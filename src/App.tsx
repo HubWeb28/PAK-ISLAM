@@ -372,6 +372,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResult, setSearchResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [userApplication, setUserApplication] = useState<any>(null);
   const [stats, setStats] = useState({ total: 0, approved: 0 });
   const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
   const [autoDrawTime, setAutoDrawTime] = useState<string>('');
@@ -425,6 +426,16 @@ export default function App() {
         setUser(u);
         if (u) {
           setIsAdmin(u.email === ADMIN_EMAIL);
+          
+          // Fetch user application status
+          const q = query(collection(db, 'participants'), where('uid', '==', u.uid), limit(1));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            setUserApplication(snap.docs[0].data());
+          } else {
+            setUserApplication(null);
+          }
+
           // Check device lock
           if (deviceToken) {
             const userDoc = await getDoc(doc(db, 'users', u.uid));
@@ -668,29 +679,168 @@ export default function App() {
           />
         ) : (
           <>
+            {/* Top Merged Islamic Banner */}
+            <div className="max-w-7xl mx-auto px-4 pt-6">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="relative rounded-[48px] overflow-hidden h-72 md:h-[450px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] border-8 border-white bg-[#FDFCF9]"
+              >
+                {/* Background Atmosphere */}
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_120%,#ECFDF5_0%,transparent_70%)] opacity-60" />
+                  <div className="absolute top-0 left-0 w-full h-full opacity-[0.02] grayscale" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")' }} />
+                </div>
+
+                <div className="relative h-full flex items-stretch">
+                  {/* Madina Side */}
+                  <div className="flex-1 relative flex flex-col items-center justify-center group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                    <motion.div 
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                      className="relative z-10 flex flex-col items-center"
+                    >
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-emerald-400/20 blur-3xl rounded-full scale-150 animate-pulse" />
+                        <img 
+                          src="https://images.unsplash.com/photo-1580418827493-f2b22c0a76cb?auto=format&fit=crop&q=80&w=800" 
+                          alt="Madina" 
+                          className="w-44 h-44 md:w-72 md:h-72 object-cover rounded-[32px] md:rounded-[64px] shadow-2xl border-4 border-white transform -rotate-3 group-hover:rotate-0 transition-transform duration-700"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                      <div className="mt-6 text-center">
+                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.4em] mb-1">The Blessed</p>
+                        <h4 className="text-2xl md:text-4xl font-black text-emerald-950 tracking-tighter">MADINA</h4>
+                      </div>
+                    </motion.div>
+                  </div>
+
+                  {/* Center Divider / Arch */}
+                  <div className="hidden md:flex items-center justify-center px-4 relative z-20">
+                    <div className="w-px h-3/4 bg-gradient-to-b from-transparent via-emerald-200 to-transparent opacity-50" />
+                    <div className="absolute w-12 h-12 bg-white rounded-full border border-emerald-100 flex items-center justify-center shadow-sm">
+                      <Star className="w-5 h-5 text-emerald-600 fill-emerald-50" />
+                    </div>
+                  </div>
+
+                  {/* Kaaba Side */}
+                  <div className="flex-1 relative flex flex-col items-center justify-center group">
+                    <div className="absolute inset-0 bg-gradient-to-l from-emerald-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                    <motion.div 
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.5 }}
+                      className="relative z-10 flex flex-col items-center"
+                    >
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-emerald-900/10 blur-3xl rounded-full scale-150 animate-pulse" />
+                        <img 
+                          src="https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?auto=format&fit=crop&q=80&w=800" 
+                          alt="Kaaba" 
+                          className="w-44 h-44 md:w-72 md:h-72 object-cover rounded-[32px] md:rounded-[64px] shadow-2xl border-4 border-white transform rotate-3 group-hover:rotate-0 transition-transform duration-700"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                      <div className="mt-6 text-center">
+                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.4em] mb-1">The Holy</p>
+                        <h4 className="text-2xl md:text-4xl font-black text-emerald-950 tracking-tighter">KHANA KABA</h4>
+                      </div>
+                    </motion.div>
+                  </div>
+                </div>
+
+                {/* Corner Accents */}
+                <div className="absolute top-0 left-0 w-32 h-32 border-l-2 border-t-2 border-emerald-100/50 rounded-tl-[48px] pointer-events-none" />
+                <div className="absolute bottom-0 right-0 w-32 h-32 border-r-2 border-b-2 border-emerald-100/50 rounded-br-[48px] pointer-events-none" />
+              </motion.div>
+            </div>
+
             {/* Hero Section */}
-            <section className="text-center py-12 space-y-6">
+            <section className="text-center py-12 space-y-8 relative overflow-hidden">
+              {/* Islamic Decorative Elements */}
+              <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden opacity-10">
+                <svg className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[1200px] text-emerald-900" viewBox="0 0 100 100" fill="currentColor">
+                  <path d="M50 0 L60 40 L100 50 L60 60 L50 100 L40 60 L0 50 L40 40 Z" />
+                </svg>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] border-[40px] border-emerald-900 rounded-full rotate-45 opacity-20" />
+                <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[600px] border-[20px] border-emerald-900 rounded-full -rotate-12 opacity-20" />
+              </div>
+
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="space-y-4"
+                className="space-y-6 relative z-10"
               >
-                <h2 className="text-4xl sm:text-5xl font-extrabold text-emerald-900 tracking-tight">
-                  {t.title}
-                </h2>
-                <p className="text-lg text-emerald-700 max-w-2xl mx-auto">
-                  {t.subtitle}
-                </p>
+                <div className="flex flex-col items-center gap-4">
+                  <div className="flex items-center gap-2 text-emerald-700 font-bold bg-emerald-50 px-6 py-2 rounded-full border border-emerald-100 shadow-sm">
+                    <Star className="w-4 h-4 fill-emerald-700" />
+                    <span className="text-sm tracking-widest">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</span>
+                    <Star className="w-4 h-4 fill-emerald-700" />
+                  </div>
+                  <h2 className="text-5xl sm:text-7xl font-black text-emerald-950 tracking-tight leading-tight">
+                    {t.title}
+                  </h2>
+                  <p className="text-xl text-emerald-800/70 max-w-2xl mx-auto font-medium">
+                    {t.subtitle}
+                  </p>
+                </div>
               </motion.div>
 
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-                <button 
-                  onClick={handleApply}
-                  className="w-full sm:w-auto bg-emerald-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:bg-emerald-700 hover:scale-105 transition-all shadow-lg shadow-emerald-200 flex items-center justify-center gap-2"
-                >
-                  <CheckCircle className="w-6 h-6" />
-                  {t.applyNow}
-                </button>
+              <div className="flex flex-col items-center justify-center gap-6 pt-4 relative z-10">
+                {userApplication ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <motion.div 
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="bg-white p-8 rounded-[40px] shadow-2xl border-2 border-emerald-500 flex flex-col items-center gap-4 text-center max-w-md"
+                    >
+                      <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 animate-bounce">
+                        <Clock className="w-10 h-10" />
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-3xl font-black text-emerald-900 uppercase tracking-tighter">
+                          {userApplication.status === 'pending' ? t.pending : userApplication.status.toUpperCase()}
+                        </h3>
+                        <p className="text-emerald-700 font-bold leading-tight">
+                          {lang === 'en' 
+                            ? "Your journey to the Holy Lands is being verified. Have faith in Allah's plan!" 
+                            : "مقدس مقامات کے لیے آپ کے سفر کی تصدیق ہو رہی ہے۔ اللہ کے فیصلے پر بھروسہ رکھیں!"}
+                        </p>
+                        <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-100 mt-2">
+                          <p className="text-[10px] text-emerald-800 font-medium italic">
+                            {lang === 'en'
+                              ? "\"And Allah is the best of planners.\" (Quran 8:30)"
+                              : "\"اور اللہ سب سے بہتر منصوبہ بندی کرنے والا ہے۔\" (القرآن 8:30)"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ x: '-100%' }}
+                          animate={{ x: '100%' }}
+                          transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                          className="w-full h-full bg-emerald-500"
+                        />
+                      </div>
+                    </motion.div>
+                    <p className="text-sm font-black text-emerald-900/40 uppercase tracking-[0.3em]">
+                      Verification in progress
+                    </p>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={handleApply}
+                    className="group relative bg-emerald-600 text-white px-12 py-6 rounded-[32px] font-black text-2xl hover:bg-emerald-700 hover:scale-105 transition-all shadow-2xl shadow-emerald-200 flex items-center justify-center gap-3 overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
+                    <CheckCircle className="w-8 h-8 fill-white/20" />
+                    {t.applyNow}
+                    <ArrowRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
+                  </button>
+                )}
               </div>
             </section>
 
@@ -940,10 +1090,20 @@ export default function App() {
                   user={user!} 
                   deviceToken={deviceToken!} 
                   settings={settings}
-                  onSuccess={() => {
+                  onSuccess={async () => {
                     setShowApply(false);
                     setCountdown(null);
-                    alert(t.successMessage);
+                    
+                    // Fetch user application status immediately
+                    if (user) {
+                      const q = query(collection(db, 'participants'), where('uid', '==', user.uid), limit(1));
+                      const snap = await getDocs(q);
+                      if (!snap.empty) {
+                        setUserApplication(snap.docs[0].data());
+                      }
+                    }
+                    
+                    fetchStats();
                   }} 
                 />
               </div>
@@ -1115,11 +1275,6 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
       return;
     }
 
-    if (!formData.amount || Number(formData.amount) < 50) {
-      alert(t.lowAmountError);
-      return;
-    }
-
     if (!formData.tid || formData.tid.length < 5) {
       alert("Please enter a valid Transaction ID.");
       return;
@@ -1147,12 +1302,19 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
 
       await addDoc(collection(db, 'participants'), {
         ...formData,
+        amount: 50, // Default to 50 RS
         email: user.email,
         uid: user.uid,
         deviceToken,
         status: 'pending',
         timestamp: serverTimestamp()
       });
+      
+      // Show hopeful message
+      alert(lang === 'ur' 
+        ? "ماشاءاللہ! آپ کی درخواست جمع ہو گئی ہے۔ اللہ آپ کے نصیب اچھے کرے اور آپ کو مقدس مقامات کی زیارت نصیب فرمائے۔" 
+        : "MashaAllah! Your application has been submitted. May Allah bless you with the opportunity to visit the Holy Lands.");
+      
       onSuccess();
     } catch (e) {
       console.error(e);
@@ -1215,10 +1377,15 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
               </label>
               <input 
                 required
-                type="tel" 
-                placeholder="03xx-xxxxxxx"
+                type="text" 
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="03xxxxxxxxx"
                 value={formData.whatsapp}
-                onChange={e => setFormData({...formData, whatsapp: e.target.value})}
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 11) setFormData({...formData, whatsapp: val});
+                }}
                 className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
@@ -1323,8 +1490,14 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
               <input 
                 required
                 type="text" 
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="Account Number"
                 value={formData.senderNumber}
-                onChange={e => setFormData({...formData, senderNumber: e.target.value})}
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setFormData({...formData, senderNumber: val});
+                }}
                 className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
@@ -1408,21 +1581,6 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
             </div>
 
             <div className="space-y-4">
-              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-emerald-600" />
-                {t.amountLabel}
-              </label>
-              <input 
-                required
-                type="number" 
-                placeholder="Enter amount sent (e.g. 50)"
-                value={formData.amount}
-                onChange={e => setFormData({...formData, amount: e.target.value})}
-                className="w-full border border-slate-200 rounded-xl px-4 py-4 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-bold text-lg"
-              />
-            </div>
-
-            <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
                   <Hash className="w-4 h-4 text-emerald-600" />
@@ -1439,9 +1597,14 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
                 <input 
                   required
                   type="text" 
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Enter TID manually"
                   value={formData.tid}
-                  onChange={e => setFormData({...formData, tid: e.target.value})}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setFormData({...formData, tid: val});
+                  }}
                   className={cn(
                     "w-full border rounded-xl px-4 py-4 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-lg",
                     formData.slipImage ? "border-emerald-500 bg-emerald-50" : "border-slate-200"
@@ -1529,29 +1692,57 @@ function AdminDashboard({ t, lang, settings, setSettings, onClose }: any) {
     if (!p) return;
 
     try {
+      setLoading(true);
       if (action === 'approve') {
-        const tokenNumber = `PK-${Math.floor(100 + Math.random() * 900)}`;
-        await updateDoc(doc(db, 'participants', id), { status: 'approved', tokenNumber });
+        const tokenNumber = `PK-${Math.floor(1000 + Math.random() * 9000)}`;
+        await updateDoc(doc(db, 'participants', id), { 
+          status: 'approved', 
+          tokenNumber,
+          approvedAt: serverTimestamp() 
+        });
+        alert(`Approved! Token: ${tokenNumber}`);
       } else if (action === 'reject') {
-        await updateDoc(doc(db, 'participants', id), { status: 'rejected' });
+        await updateDoc(doc(db, 'participants', id), { 
+          status: 'rejected',
+          rejectedAt: serverTimestamp() 
+        });
+        alert("Application Rejected");
       } else if (action === 'blacklist') {
-        await updateDoc(doc(db, 'participants', id), { status: 'blacklisted' });
-        await setDoc(doc(db, 'blacklist', p.email), { email: p.email, deviceToken: p.deviceToken, timestamp: serverTimestamp() });
+        await updateDoc(doc(db, 'participants', id), { 
+          status: 'blacklisted',
+          blacklistedAt: serverTimestamp() 
+        });
+        await setDoc(doc(db, 'blacklist', p.email), { 
+          email: p.email, 
+          deviceToken: p.deviceToken, 
+          timestamp: serverTimestamp() 
+        });
+        alert("User Blacklisted");
       }
-      fetchParticipants();
+      await fetchParticipants();
       setSelected(null);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert("Action failed: " + e.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleUpdateAccounts = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await setDoc(doc(db, 'settings', 'accounts'), settings);
-      alert("Settings updated!");
-    } catch (e) {
+      setLoading(true);
+      await setDoc(doc(db, 'settings', 'accounts'), {
+        ...settings,
+        updatedAt: serverTimestamp()
+      });
+      alert("Settings updated successfully!");
+    } catch (e: any) {
       console.error(e);
+      alert("Update failed: " + e.message);
+    } finally {
+      setLoading(false);
     }
   };
 
