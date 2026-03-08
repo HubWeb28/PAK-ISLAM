@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'marvelzain43@gmail.com';
+    }
+
+    // Settings collection: Only admin can write, everyone can read
+    match /settings/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Participants collection
+    match /participants/{participantId} {
+      // Admin can do everything
+      allow read, write: if isAdmin();
+      
+      // Users can read their own data (by email or deviceToken)
+      // and create their own entry if they are not blacklisted
+      allow create: if request.auth != null 
+                    && !exists(/databases/$(database)/documents/blacklist/$(request.auth.token.email))
+                    && !exists(/databases/$(database)/documents/blacklist/$(request.resource.data.deviceToken));
+      
+      allow read: if request.auth != null && (resource.data.email == request.auth.token.email || isAdmin());
+    }
+
+    // Blacklist collection: Only admin can manage
+    match /blacklist/{userId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Winners collection: Only admin can write, everyone can read
+    match /winners/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
