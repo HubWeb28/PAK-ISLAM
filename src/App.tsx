@@ -62,7 +62,8 @@ import {
   FileText,
   Camera,
   Upload,
-  Info
+  Info,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -146,6 +147,17 @@ interface Translation {
   step1: string;
   step2: string;
   step3: string;
+  step4: string;
+  senderInfo: string;
+  senderNameLabel: string;
+  senderNumberLabel: string;
+  invalidSlipError: string;
+  transactionTimeLabel: string;
+  casteOptional: string;
+  paymentNotice: string;
+  amountLabel: string;
+  lowAmountError: string;
+  paymentWarning: string;
 }
 
 const translations: Record<Language, Translation> = {
@@ -199,7 +211,18 @@ const translations: Record<Language, Translation> = {
     tidDetectionError: "Could not detect TID. Please enter manually or try another image.",
     step1: "Personal Info",
     step2: "Additional Details",
-    step3: "Payment & Verification"
+    step3: "Sender Info",
+    step4: "Payment & Verification",
+    senderInfo: "Your Payment Details",
+    senderNameLabel: "Sender Account Name",
+    senderNumberLabel: "Sender Account Number",
+    invalidSlipError: "Invalid payment slip. Please upload a clear screenshot of your transaction.",
+    transactionTimeLabel: "Transaction Time",
+    casteOptional: "(Optional)",
+    paymentNotice: "Please transfer exactly 50 RS to the account below.",
+    amountLabel: "Amount Detected",
+    lowAmountError: "The detected amount is less than 50 RS. Please transfer the full amount and upload the correct slip.",
+    paymentWarning: "Warning: Applications with payments less than 50 RS will be automatically rejected."
   },
   ur: {
     title: "پاک اسلام حج و عمرہ قرعہ اندازی",
@@ -251,7 +274,18 @@ const translations: Record<Language, Translation> = {
     tidDetectionError: "TID نہیں مل سکی۔ براہ کرم خود درج کریں یا دوسری تصویر آزمائیں۔",
     step1: "ذاتی معلومات",
     step2: "مزید تفصیلات",
-    step3: "ادائیگی اور تصدیق"
+    step3: "آپ کی معلومات",
+    step4: "ادائیگی اور تصدیق",
+    senderInfo: "آپ کی ادائیگی کی تفصیلات",
+    senderNameLabel: "بھیجنے والے کا نام",
+    senderNumberLabel: "بھیجنے والے کا نمبر",
+    invalidSlipError: "غلط رسید۔ براہ کرم اپنی ٹرانزیکشن کا واضح اسکرین شاٹ اپ لوڈ کریں۔",
+    transactionTimeLabel: "ٹرانزیکشن کا وقت",
+    casteOptional: "(اختیاری)",
+    paymentNotice: "براہ کرم نیچے دیے گئے اکاؤنٹ میں ٹھیک 50 روپے منتقل کریں۔",
+    amountLabel: "پتہ چلا رقم",
+    lowAmountError: "پتہ چلا رقم 50 روپے سے کم ہے۔ براہ کرم پوری رقم منتقل کریں اور صحیح رسید اپ لوڈ کریں۔",
+    paymentWarning: "انتباہ: 50 روپے سے کم ادائیگی والی درخواستیں خود بخود مسترد کر دی جائیں گی۔"
   }
 };
 
@@ -270,7 +304,10 @@ export default function App() {
     easyPaisaTitle: 'Pak Islam',
     jazzCash: '03047321935',
     jazzCashTitle: 'Pak Islam',
-    bankDetails: 'Bank Alfalah: 1234-5678-9012'
+    bankDetails: 'Bank Alfalah: 1234-5678-9012',
+    enableEasyPaisa: true,
+    enableJazzCash: true,
+    enableBank: true
   });
   const [winner, setWinner] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -866,8 +903,12 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
     cnic: '',
     address: '',
     caste: '',
+    senderName: '',
+    senderNumber: '',
     paymentMethod: 'easypaisa',
     tid: '',
+    transactionTime: '',
+    amount: 0,
     agreedToPrivacy: false
   });
   const [submitting, setSubmitting] = useState(false);
@@ -891,19 +932,46 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
           contents: [
             {
               parts: [
-                { text: "Extract the Transaction ID (TID) from this payment slip screenshot (EasyPaisa, JazzCash, or Bank). Return ONLY the ID number, nothing else. If not found, return 'NOT_FOUND'." },
+                { text: `Analyze this image. 
+                1. Is this a valid payment slip/receipt from EasyPaisa, JazzCash, or a Bank? (Yes/No)
+                2. If yes, extract the Transaction ID (TID).
+                3. If yes, extract the Date and Time of transaction.
+                4. If yes, extract the Amount transferred (as a number).
+                
+                Return the result in JSON format:
+                {
+                  "isValid": boolean,
+                  "tid": "string or null",
+                  "time": "string or null",
+                  "amount": number or null,
+                  "reason": "if invalid, why?"
+                }` },
                 { inlineData: { mimeType: file.type, data: base64 } }
               ]
             }
           ],
+          config: { responseMimeType: "application/json" }
         });
         
-        const tid = response.text?.trim();
-        if (tid && tid !== 'NOT_FOUND') {
-          setFormData(prev => ({ ...prev, tid }));
+        const result = JSON.parse(response.text || '{}');
+        if (result.isValid && result.tid) {
+          if (result.amount !== null && result.amount < 50) {
+            setDetectionStatus('error');
+            alert(t.lowAmountError);
+            setDetecting(false);
+            return;
+          }
+
+          setFormData(prev => ({ 
+            ...prev, 
+            tid: result.tid,
+            transactionTime: result.time || '',
+            amount: result.amount || 0
+          }));
           setDetectionStatus('success');
         } else {
           setDetectionStatus('error');
+          if (result.reason) alert(result.reason);
         }
         setDetecting(false);
       };
@@ -917,13 +985,18 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (step < 3) {
+    if (step < 4) {
       setStep(step + 1);
       return;
     }
     
     if (!formData.agreedToPrivacy) {
       alert("Please agree to the privacy policy.");
+      return;
+    }
+
+    if (formData.amount > 0 && formData.amount < 50) {
+      alert(t.lowAmountError);
       return;
     }
 
@@ -966,7 +1039,8 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
   const steps = [
     { id: 1, label: t.step1, icon: UserIcon },
     { id: 2, label: t.step2, icon: FileText },
-    { id: 3, label: t.step3, icon: CreditCard }
+    { id: 3, label: t.step3, icon: UserIcon },
+    { id: 4, label: t.step4, icon: CreditCard }
   ];
 
   return (
@@ -1072,10 +1146,9 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
             <div className="space-y-2">
               <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
                 <Users className="w-4 h-4 text-emerald-600" />
-                {t.casteLabel}
+                {t.casteLabel} <span className="text-slate-400 font-normal text-xs">{t.casteOptional}</span>
               </label>
               <input 
-                required
                 type="text" 
                 value={formData.caste}
                 onChange={e => setFormData({...formData, caste: e.target.value})}
@@ -1096,16 +1169,73 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
+            className="space-y-4"
+          >
+            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 mb-6">
+              <p className="text-sm text-emerald-800 font-medium flex items-center gap-2">
+                <Info className="w-4 h-4" />
+                Please provide your account details from which you will send the payment.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                <UserIcon className="w-4 h-4 text-emerald-600" />
+                {t.senderNameLabel}
+              </label>
+              <input 
+                required
+                type="text" 
+                value={formData.senderName}
+                onChange={e => setFormData({...formData, senderName: e.target.value})}
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                <Hash className="w-4 h-4 text-emerald-600" />
+                {t.senderNumberLabel}
+              </label>
+              <input 
+                required
+                type="text" 
+                value={formData.senderNumber}
+                onChange={e => setFormData({...formData, senderNumber: e.target.value})}
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setStep(2)} className="flex-1 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50">Back</button>
+              <button type="submit" className="flex-[2] bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 flex items-center justify-center gap-2">
+                {t.step4}
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {step === 4 && (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
             className="space-y-6"
           >
+            {/* Warning Banner */}
+            <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-amber-900">{t.paymentWarning}</p>
+                <p className="text-xs text-amber-700">{t.paymentNotice}</p>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <label className="text-sm font-bold text-slate-700">{t.paymentMethod}</label>
               <div className="grid grid-cols-1 gap-3">
                 {[
-                  { id: 'easypaisa', label: t.easyPaisa, icon: CreditCard },
-                  { id: 'jazzcash', label: t.jazzCash, icon: CreditCard },
-                  { id: 'bank', label: t.bankTransfer, icon: CreditCard }
-                ].map(method => (
+                  { id: 'easypaisa', label: t.easyPaisa, icon: CreditCard, enabled: settings.enableEasyPaisa !== false },
+                  { id: 'jazzcash', label: t.jazzCash, icon: CreditCard, enabled: settings.enableJazzCash !== false },
+                  { id: 'bank', label: t.bankTransfer, icon: CreditCard, enabled: settings.enableBank !== false }
+                ].filter(m => m.enabled).map(method => (
                   <button
                     key={method.id}
                     type="button"
@@ -1128,7 +1258,12 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
             <div className="bg-emerald-900 text-white p-6 rounded-3xl space-y-4 shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
               <div className="relative z-10 space-y-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300">{t.accountDetails}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300">{t.accountDetails}</p>
+                  <div className="bg-amber-500 text-white px-2 py-1 rounded-lg text-[10px] font-black animate-pulse">
+                    REQUIRED: 50 RS
+                  </div>
+                </div>
                 {formData.paymentMethod === 'easypaisa' && (
                   <div>
                     <p className="text-2xl font-bold tracking-tight">{settings.easyPaisa}</p>
@@ -1180,7 +1315,26 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
                 )}
               </div>
               
-              {detectionStatus === 'success' && <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1"><Check className="w-3 h-3" /> {t.tidDetected}</p>}
+              {detectionStatus === 'success' && (
+                <div className="space-y-1">
+                  <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1"><Check className="w-3 h-3" /> {t.tidDetected}</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    {formData.transactionTime && (
+                      <p className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> {t.transactionTimeLabel}: {formData.transactionTime}
+                      </p>
+                    )}
+                    {formData.amount > 0 && (
+                      <p className={cn(
+                        "text-[10px] font-bold flex items-center gap-1",
+                        formData.amount >= 50 ? "text-emerald-600" : "text-red-500"
+                      )}>
+                        <CreditCard className="w-3 h-3" /> {t.amountLabel}: {formData.amount} RS
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
               {detectionStatus === 'error' && <p className="text-[10px] text-red-500 font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {t.tidDetectionError}</p>}
             </div>
 
@@ -1205,7 +1359,7 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
             </div>
 
             <div className="flex gap-3">
-              <button type="button" onClick={() => setStep(2)} className="flex-1 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50">Back</button>
+              <button type="button" onClick={() => setStep(3)} className="flex-1 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50">Back</button>
               <button 
                 type="submit" 
                 disabled={submitting || detecting}
@@ -1384,8 +1538,16 @@ function AdminDashboard({ t, lang, settings, setSettings, onClose }: any) {
                   className="w-full border rounded-xl px-3 py-2 text-sm"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase">EasyPaisa</label>
+              <div className="space-y-2 border-b pb-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-500 uppercase">EasyPaisa</label>
+                  <input 
+                    type="checkbox" 
+                    checked={settings.enableEasyPaisa !== false}
+                    onChange={e => setSettings({...settings, enableEasyPaisa: e.target.checked})}
+                    className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                </div>
                 <input 
                   type="text" 
                   value={settings.easyPaisa}
@@ -1400,8 +1562,16 @@ function AdminDashboard({ t, lang, settings, setSettings, onClose }: any) {
                   placeholder="Account Title"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase">JazzCash</label>
+              <div className="space-y-2 border-b pb-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-500 uppercase">JazzCash</label>
+                  <input 
+                    type="checkbox" 
+                    checked={settings.enableJazzCash !== false}
+                    onChange={e => setSettings({...settings, enableJazzCash: e.target.checked})}
+                    className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                </div>
                 <input 
                   type="text" 
                   value={settings.jazzCash}
@@ -1414,6 +1584,22 @@ function AdminDashboard({ t, lang, settings, setSettings, onClose }: any) {
                   onChange={e => setSettings({...settings, jazzCashTitle: e.target.value})}
                   className="w-full border rounded-xl px-3 py-2 text-sm"
                   placeholder="Account Title"
+                />
+              </div>
+              <div className="space-y-2 border-b pb-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Bank Details</label>
+                  <input 
+                    type="checkbox" 
+                    checked={settings.enableBank !== false}
+                    onChange={e => setSettings({...settings, enableBank: e.target.checked})}
+                    className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                </div>
+                <textarea 
+                  value={settings.bankDetails}
+                  onChange={e => setSettings({...settings, bankDetails: e.target.value})}
+                  className="w-full border rounded-xl px-3 py-2 text-sm min-h-[60px]"
                 />
               </div>
               <button type="submit" className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700">
@@ -1481,9 +1667,31 @@ function AdminDashboard({ t, lang, settings, setSettings, onClose }: any) {
                   <span className="font-bold">{selected.caste}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-slate-500">Sender Name</span>
+                  <span className="font-bold">{selected.senderName}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-slate-500">Sender Number</span>
+                  <span className="font-bold font-mono">{selected.senderNumber}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b">
                   <span className="text-slate-500">TID</span>
                   <span className="font-bold text-emerald-600">{selected.tid}</span>
                 </div>
+                {selected.amount > 0 && (
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span className="text-slate-500">Detected Amount</span>
+                    <span className={cn("font-bold", selected.amount >= 50 ? "text-emerald-600" : "text-red-500")}>
+                      {selected.amount} RS
+                    </span>
+                  </div>
+                )}
+                {selected.transactionTime && (
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span className="text-slate-500">Transaction Time</span>
+                    <span className="font-medium text-xs">{selected.transactionTime}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center py-2 border-b">
                   <span className="text-slate-500">Device Token</span>
                   <span className="font-mono text-[10px] bg-slate-100 p-1 rounded">{selected.deviceToken}</span>
