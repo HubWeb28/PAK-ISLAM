@@ -11,6 +11,8 @@ import {
   GoogleAuthProvider, 
   onAuthStateChanged, 
   signOut,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   User
 } from 'firebase/auth';
 import { 
@@ -233,6 +235,10 @@ export default function App() {
   const [stats, setStats] = useState({ total: 0, approved: 0 });
   const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
   const [autoDrawTime, setAutoDrawTime] = useState<string>('');
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const [showTransparencyLog, setShowTransparencyLog] = useState(false);
   const [approvedTokens, setApprovedTokens] = useState<string[]>([]);
@@ -244,9 +250,10 @@ export default function App() {
     const q = query(collection(db, 'participants'));
     const snap = await getDocs(q);
     const all = snap.docs.map(d => d.data());
+    const approvedCount = all.filter((p: any) => p.status === 'approved').length;
     setStats({
-      total: all.length + 2000,
-      approved: all.filter((p: any) => p.status === 'approved').length
+      total: all.length + 2000 + (approvedCount * 10), // Increase total by 10 for every approval
+      approved: approvedCount
     });
     setApprovedTokens(all.filter((p: any) => p.status === 'approved').map((p: any) => p.tokenNumber));
   }, []);
@@ -345,10 +352,49 @@ export default function App() {
   }, [countdown, lang]);
 
   const handleLogin = async () => {
+    setAuthError(null);
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login failed", error);
+      if (error.code === 'auth/popup-blocked') {
+        alert("Popup was blocked by your browser. Please allow popups for this site.");
+      } else if (error.code === 'auth/unauthorized-domain') {
+        alert("This domain is not authorized in Firebase. Please add your Netlify URL to 'Authorized Domains' in Firebase Console.");
+      } else {
+        setAuthError(error.message);
+        alert("Login failed: " + error.message);
+      }
+    }
+  };
+
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    try {
+      if (adminEmail !== ADMIN_EMAIL) {
+        alert("Invalid Admin Email");
+        return;
+      }
+      await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+      setShowAdminLogin(false);
+      setAdminEmail('');
+      setAdminPassword('');
+    } catch (error: any) {
+      console.error("Admin login failed", error);
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        // Attempt to create the admin user if it doesn't exist (only for the specific email)
+        if (adminEmail === ADMIN_EMAIL && adminPassword === 'zain@zain123') {
+          try {
+            await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
+            setShowAdminLogin(false);
+            return;
+          } catch (e: any) {
+            setAuthError(e.message);
+          }
+        }
+      }
+      setAuthError("Invalid credentials. Please use the correct admin password.");
     }
   };
 
@@ -672,8 +718,76 @@ export default function App() {
           </div>
           <p className="text-slate-500 text-sm">© 2026 Pak-Islam Lottery. All rights reserved.</p>
           <p className="text-emerald-600 font-bold text-xs uppercase tracking-widest">Authorized & Secure Platform</p>
+          {!user && (
+            <button 
+              onClick={() => setShowAdminLogin(true)}
+              className="text-slate-400 text-[10px] hover:text-emerald-600 transition-colors mt-4"
+            >
+              Admin Access
+            </button>
+          )}
         </div>
       </footer>
+
+      {/* Admin Login Modal */}
+      <AnimatePresence>
+        {showAdminLogin && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-8 space-y-6"
+            >
+              <div className="text-center space-y-2">
+                <ShieldAlert className="w-12 h-12 text-emerald-600 mx-auto" />
+                <h3 className="text-2xl font-bold text-slate-900">Admin Portal</h3>
+                <p className="text-slate-500 text-sm">Authorized personnel only</p>
+              </div>
+
+              <form onSubmit={handleAdminLogin} className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Email</label>
+                  <input 
+                    type="email" 
+                    value={adminEmail}
+                    onChange={e => setAdminEmail(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    placeholder="admin@example.com"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Password</label>
+                  <input 
+                    type="password" 
+                    value={adminPassword}
+                    onChange={e => setAdminPassword(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+                {authError && <p className="text-red-500 text-xs font-medium">{authError}</p>}
+                <button 
+                  type="submit"
+                  className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-black transition-all flex items-center justify-center gap-2"
+                >
+                  <LogOut className="w-5 h-5" />
+                  Login to Dashboard
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setShowAdminLogin(false)}
+                  className="w-full text-slate-400 text-sm font-medium hover:text-slate-600"
+                >
+                  Cancel
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

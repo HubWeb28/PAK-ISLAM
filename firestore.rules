@@ -27,7 +27,10 @@ service cloud.firestore {
       
       // Users can create their own entry if they are not blacklisted
       allow create: if request.auth != null 
-                    && !exists(/databases/$(database)/documents/blacklist/$(request.auth.token.email));
+                    && (request.auth.token.email == null || !exists(/databases/$(database)/documents/blacklist/$(request.auth.token.email)));
+      
+      // Users can read/update their own entry
+      allow read, update: if request.auth != null && (resource == null || resource.data.uid == request.auth.uid);
     }
 
     // Blacklist collection: Only admin can manage
