@@ -328,15 +328,19 @@ export default function App() {
 
   // Fetch Stats
   const fetchStats = useCallback(async () => {
-    const q = query(collection(db, 'participants'));
-    const snap = await getDocs(q);
-    const all = snap.docs.map(d => d.data());
-    const approvedCount = all.filter((p: any) => p.status === 'approved').length;
-    setStats({
-      total: all.length + 2000 + (approvedCount * 10), // Increase total by 10 for every approval
-      approved: approvedCount
-    });
-    setApprovedTokens(all.filter((p: any) => p.status === 'approved').map((p: any) => p.tokenNumber));
+    try {
+      const q = query(collection(db, 'participants'));
+      const snap = await getDocs(q);
+      const all = snap.docs.map(d => d.data());
+      const approvedCount = all.filter((p: any) => p.status === 'approved').length;
+      setStats({
+        total: all.length + 2000 + (approvedCount * 10), // Increase total by 10 for every approval
+        approved: approvedCount
+      });
+      setApprovedTokens(all.filter((p: any) => p.status === 'approved').map((p: any) => p.tokenNumber));
+    } catch (error) {
+      console.error("Fetch stats error:", error);
+    }
   }, []);
 
   // Initialize Device Token
@@ -352,35 +356,49 @@ export default function App() {
 
   // Auth Listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        setIsAdmin(u.email === ADMIN_EMAIL);
-        // Check device lock
-        if (deviceToken) {
-          const userDoc = await getDoc(doc(db, 'users', u.uid));
-          if (userDoc.exists()) {
-            if (userDoc.data().deviceToken !== deviceToken) {
-              // Device mismatch - but only if not admin
-              if (u.email !== ADMIN_EMAIL) {
-                alert(t.deviceLockError);
-                signOut(auth);
-              }
-            }
-          } else {
-            await setDoc(doc(db, 'users', u.uid), {
-              email: u.email,
-              deviceToken: deviceToken,
-              createdAt: serverTimestamp()
-            });
-          }
-        }
-      } else {
-        setIsAdmin(false);
-      }
+    // Safety timeout: if auth doesn't respond in 8 seconds, stop loading
+    const timer = setTimeout(() => {
       setLoading(false);
+    }, 8000);
+
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      try {
+        setUser(u);
+        if (u) {
+          setIsAdmin(u.email === ADMIN_EMAIL);
+          // Check device lock
+          if (deviceToken) {
+            const userDoc = await getDoc(doc(db, 'users', u.uid));
+            if (userDoc.exists()) {
+              if (userDoc.data().deviceToken !== deviceToken) {
+                // Device mismatch - but only if not admin
+                if (u.email !== ADMIN_EMAIL) {
+                  alert(t.deviceLockError);
+                  signOut(auth);
+                }
+              }
+            } else {
+              await setDoc(doc(db, 'users', u.uid), {
+                email: u.email,
+                deviceToken: deviceToken,
+                createdAt: serverTimestamp()
+              });
+            }
+          }
+        } else {
+          setIsAdmin(false);
+        }
+      } catch (error) {
+        console.error("Auth listener error:", error);
+      } finally {
+        clearTimeout(timer);
+        setLoading(false);
+      }
     });
-    return unsubscribe;
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, [deviceToken, lang, t.deviceLockError]);
 
   // Fetch Settings & Winner
