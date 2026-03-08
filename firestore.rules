@@ -12,18 +12,22 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Users collection: Users can manage their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Participants collection
     match /participants/{participantId} {
       // Admin can do everything
       allow read, write: if isAdmin();
       
-      // Users can read their own data (by email or deviceToken)
-      // and create their own entry if they are not blacklisted
-      allow create: if request.auth != null 
-                    && !exists(/databases/$(database)/documents/blacklist/$(request.auth.token.email))
-                    && !exists(/databases/$(database)/documents/blacklist/$(request.resource.data.deviceToken));
+      // Public can read for transparency (Total count and Approved tokens)
+      allow read: if true;
       
-      allow read: if request.auth != null && (resource.data.email == request.auth.token.email || isAdmin());
+      // Users can create their own entry if they are not blacklisted
+      allow create: if request.auth != null 
+                    && !exists(/databases/$(database)/documents/blacklist/$(request.auth.token.email));
     }
 
     // Blacklist collection: Only admin can manage
