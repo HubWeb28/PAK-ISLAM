@@ -228,10 +228,10 @@ const translations: Record<Language, Translation> = {
     casteLabel: "Caste / Tribe",
     privacyPolicyLabel: "Privacy Policy",
     privacyPolicyAgree: "I agree to the terms and privacy policy of Pak-Islam Lottery.",
-    uploadSlip: "Upload Payment Slip (Auto-Detect TID)",
-    detectingTid: "Scanning slip for TID...",
-    tidDetected: "TID Detected Successfully!",
-    tidDetectionError: "Could not detect TID. Please enter manually or try another image.",
+    uploadSlip: "Upload Payment Slip Screenshot",
+    detectingTid: "Saving slip...",
+    tidDetected: "Slip Uploaded Successfully!",
+    tidDetectionError: "Please upload a clear screenshot of your payment.",
     step1: "Personal Info",
     step2: "Additional Details",
     step3: "Sender Info",
@@ -309,10 +309,10 @@ const translations: Record<Language, Translation> = {
     casteLabel: "قوم / قبیلہ",
     privacyPolicyLabel: "پرائیویسی پالیسی",
     privacyPolicyAgree: "میں پاک اسلام قرعہ اندازی کی شرائط اور پرائیویسی پالیسی سے اتفاق کرتا ہوں۔",
-    uploadSlip: "ادائیگی کی رسید اپ لوڈ کریں (TID خودکار تلاش)",
-    detectingTid: "رسید سے TID تلاش کی جا رہی ہے...",
-    tidDetected: "TID کامیابی سے مل گئی!",
-    tidDetectionError: "TID نہیں مل سکی۔ براہ کرم خود درج کریں یا دوسری تصویر آزمائیں۔",
+    uploadSlip: "ادائیگی کی رسید کا اسکرین شاٹ اپ لوڈ کریں",
+    detectingTid: "رسید محفوظ کی جا رہی ہے...",
+    tidDetected: "رسید کامیابی سے اپ لوڈ ہو گئی!",
+    tidDetectionError: "براہ کرم اپنی ادائیگی کا واضح اسکرین شاٹ اپ لوڈ کریں۔",
     step1: "ذاتی معلومات",
     step2: "مزید تفصیلات",
     step3: "آپ کی معلومات",
@@ -1070,123 +1070,31 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
     senderNumber: '',
     paymentMethod: 'easypaisa',
     tid: '',
-    transactionTime: '',
-    amount: 0,
+    amount: '',
+    slipImage: '',
     agreedToPrivacy: false
   });
   const [submitting, setSubmitting] = useState(false);
-  const [detecting, setDetecting] = useState(false);
-  const [detectionStatus, setDetectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [uploading, setUploading] = useState(false);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setDetecting(true);
-    setDetectionStatus('idle');
+    setUploading(true);
     
     try {
       const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = (reader.result as string).split(',')[1];
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-        
-        const receiverTitle = formData.paymentMethod === 'easypaisa' ? settings.easyPaisaTitle : 
-                             formData.paymentMethod === 'jazzcash' ? settings.jazzCashTitle : 'Pak Islam';
-        
-        const currentTime = new Date().toISOString();
-
-        const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: [
-            {
-              parts: [
-                { text: `FAST SCAN:
-                Current Time: ${currentTime}
-                Sender: ${formData.senderName} (${formData.senderNumber})
-                Receiver: ${receiverTitle}
-                
-                Rules:
-                1. Valid EasyPaisa/JazzCash/Bank slip?
-                2. Sender Name/Number match?
-                3. Receiver Name match?
-                4. Time within 30 mins of ${currentTime}?
-                5. Amount >= 50 RS?
-                
-                JSON:
-                {
-                  "isValid": boolean,
-                  "tid": "string",
-                  "time": "string",
-                  "amount": number,
-                  "senderMatch": boolean,
-                  "receiverMatch": boolean,
-                  "timeMatch": boolean,
-                  "reason": "Urdu explanation if fail"
-                }` },
-                { inlineData: { mimeType: file.type, data: base64 } }
-              ]
-            }
-          ],
-          config: { responseMimeType: "application/json" }
-        });
-        
-        const result = JSON.parse(response.text || '{}');
-        
-        if (!result.isValid) {
-          setDetectionStatus('error');
-          alert(result.reason || "Invalid slip.");
-          setDetecting(false);
-          return;
-        }
-
-        if (!result.senderMatch) {
-          setDetectionStatus('error');
-          alert("بھیجنے والے کا نام یا نمبر فارم سے مطابقت نہیں رکھتا۔");
-          setDetecting(false);
-          return;
-        }
-
-        if (!result.receiverMatch) {
-          setDetectionStatus('error');
-          alert(`رقم غلط اکاؤنٹ میں بھیجی گئی ہے۔ وصول کنندہ کا نام "${receiverTitle}" ہونا چاہیے۔`);
-          setDetecting(false);
-          return;
-        }
-
-        if (!result.timeMatch) {
-          setDetectionStatus('error');
-          alert("ٹرانزیکشن پرانی ہے۔ رسید صرف پچھلے 30 منٹ کی ہونی چاہیے۔");
-          setDetecting(false);
-          return;
-        }
-
-        if (result.amount !== null && result.amount < 50) {
-          setDetectionStatus('error');
-          alert(t.lowAmountError);
-          setDetecting(false);
-          return;
-        }
-
-        if (result.tid) {
-          setFormData(prev => ({ 
-            ...prev, 
-            tid: result.tid,
-            transactionTime: result.time || '',
-            amount: result.amount || 0
-          }));
-          setDetectionStatus('success');
-        } else {
-          setDetectionStatus('error');
-          alert("TID detected could not be verified.");
-        }
-        setDetecting(false);
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        setFormData(prev => ({ ...prev, slipImage: base64 }));
+        setUploading(false);
       };
       reader.readAsDataURL(file);
     } catch (error) {
       console.error(error);
-      setDetectionStatus('error');
-      setDetecting(false);
+      alert("Image upload failed.");
+      setUploading(false);
     }
   };
 
@@ -1202,8 +1110,18 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
       return;
     }
 
-    if (formData.amount > 0 && formData.amount < 50) {
+    if (!formData.slipImage) {
+      alert("Please upload your payment slip screenshot.");
+      return;
+    }
+
+    if (!formData.amount || Number(formData.amount) < 50) {
       alert(t.lowAmountError);
+      return;
+    }
+
+    if (!formData.tid || formData.tid.length < 5) {
+      alert("Please enter a valid Transaction ID.");
       return;
     }
 
@@ -1490,6 +1408,21 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
             </div>
 
             <div className="space-y-4">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-emerald-600" />
+                {t.amountLabel}
+              </label>
+              <input 
+                required
+                type="number" 
+                placeholder="Enter amount sent (e.g. 50)"
+                value={formData.amount}
+                onChange={e => setFormData({...formData, amount: e.target.value})}
+                className="w-full border border-slate-200 rounded-xl px-4 py-4 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-bold text-lg"
+              />
+            </div>
+
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
                   <Hash className="w-4 h-4 text-emerald-600" />
@@ -1497,7 +1430,7 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
                 </label>
                 <label className="cursor-pointer bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-bold hover:bg-emerald-200 transition-colors flex items-center gap-1">
                   <Camera className="w-3 h-3" />
-                  {t.uploadSlip}
+                  {formData.slipImage ? "Slip Uploaded" : t.uploadSlip}
                   <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                 </label>
               </div>
@@ -1506,43 +1439,33 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
                 <input 
                   required
                   type="text" 
-                  placeholder="e.g. 123456789"
+                  placeholder="Enter TID manually"
                   value={formData.tid}
                   onChange={e => setFormData({...formData, tid: e.target.value})}
                   className={cn(
                     "w-full border rounded-xl px-4 py-4 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-lg",
-                    detectionStatus === 'success' ? "border-emerald-500 bg-emerald-50" : "border-slate-200"
+                    formData.slipImage ? "border-emerald-500 bg-emerald-50" : "border-slate-200"
                   )}
                 />
-                {detecting && (
+                {uploading && (
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-xs text-emerald-600 font-bold">
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    {t.detectingTid}
+                    Uploading...
                   </div>
                 )}
               </div>
               
-              {detectionStatus === 'success' && (
-                <div className="space-y-1">
-                  <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1"><Check className="w-3 h-3" /> {t.tidDetected}</p>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1">
-                    {formData.transactionTime && (
-                      <p className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> {t.transactionTimeLabel}: {formData.transactionTime}
-                      </p>
-                    )}
-                    {formData.amount > 0 && (
-                      <p className={cn(
-                        "text-[10px] font-bold flex items-center gap-1",
-                        formData.amount >= 50 ? "text-emerald-600" : "text-red-500"
-                      )}>
-                        <CreditCard className="w-3 h-3" /> {t.amountLabel}: {formData.amount} RS
-                      </p>
-                    )}
+              {formData.slipImage && (
+                <div className="space-y-2">
+                  <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1"><Check className="w-3 h-3" /> Slip uploaded successfully!</p>
+                  <div className="w-full h-32 rounded-xl overflow-hidden border border-emerald-100 bg-emerald-50 relative">
+                    <img src={formData.slipImage} alt="Slip Preview" className="w-full h-full object-cover opacity-50" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="bg-white/80 px-3 py-1 rounded-full text-[10px] font-bold text-emerald-700 shadow-sm">Preview Saved</span>
+                    </div>
                   </div>
                 </div>
               )}
-              {detectionStatus === 'error' && <p className="text-[10px] text-red-500 font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {t.tidDetectionError}</p>}
             </div>
 
             <div className="space-y-4">
@@ -1569,7 +1492,7 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
               <button type="button" onClick={() => setStep(3)} className="flex-1 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50">Back</button>
               <button 
                 type="submit" 
-                disabled={submitting || detecting}
+                disabled={submitting || uploading}
                 className="flex-[2] bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
               >
                 {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
@@ -1849,6 +1772,20 @@ function AdminDashboard({ t, lang, settings, setSettings, onClose }: any) {
                 <button onClick={() => setSelected(null)}><X /></button>
               </div>
               <div className="p-6 space-y-4">
+                {selected.slipImage && (
+                  <div className="space-y-2 py-2 border-b">
+                    <span className="text-xs font-bold text-slate-500 uppercase">Payment Slip</span>
+                    <div className="w-full rounded-xl overflow-hidden border border-slate-200">
+                      <img 
+                        src={selected.slipImage} 
+                        alt="Slip" 
+                        className="w-full h-auto cursor-pointer hover:scale-105 transition-transform" 
+                        onClick={() => window.open(selected.slipImage)}
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 text-center italic">Click image to open full size</p>
+                  </div>
+                )}
                 <div className="flex justify-between items-center py-2 border-b">
                   <span className="text-slate-500">Name</span>
                   <span className="font-bold">{selected.name}</span>
