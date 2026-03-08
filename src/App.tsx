@@ -33,6 +33,7 @@ import {
   Timestamp,
   writeBatch
 } from 'firebase/firestore';
+import { GoogleGenAI, Type } from "@google/genai";
 import { 
   Moon, 
   Sun, 
@@ -54,7 +55,14 @@ import {
   Phone,
   Hash,
   ArrowRight,
-  AlertCircle
+  AlertCircle,
+  FileDigit,
+  MapPin,
+  Users,
+  FileText,
+  Camera,
+  Upload,
+  Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -126,6 +134,18 @@ interface Translation {
   adminReset: string;
   adminPickWinner: string;
   adminUpdateAccounts: string;
+  cnicLabel: string;
+  addressLabel: string;
+  casteLabel: string;
+  privacyPolicyLabel: string;
+  privacyPolicyAgree: string;
+  uploadSlip: string;
+  detectingTid: string;
+  tidDetected: string;
+  tidDetectionError: string;
+  step1: string;
+  step2: string;
+  step3: string;
 }
 
 const translations: Record<Language, Translation> = {
@@ -167,7 +187,19 @@ const translations: Record<Language, Translation> = {
     adminSettings: "Account Settings",
     adminReset: "Nuclear Reset (Clear All Data)",
     adminPickWinner: "Pick Random Winner",
-    adminUpdateAccounts: "Update Payment Accounts"
+    adminUpdateAccounts: "Update Payment Accounts",
+    cnicLabel: "CNIC Number (00000-0000000-0)",
+    addressLabel: "Current Address",
+    casteLabel: "Caste / Tribe",
+    privacyPolicyLabel: "Privacy Policy",
+    privacyPolicyAgree: "I agree to the terms and privacy policy of Pak-Islam Lottery.",
+    uploadSlip: "Upload Payment Slip (Auto-Detect TID)",
+    detectingTid: "Scanning slip for TID...",
+    tidDetected: "TID Detected Successfully!",
+    tidDetectionError: "Could not detect TID. Please enter manually or try another image.",
+    step1: "Personal Info",
+    step2: "Additional Details",
+    step3: "Payment & Verification"
   },
   ur: {
     title: "پاک اسلام حج و عمرہ قرعہ اندازی",
@@ -207,7 +239,19 @@ const translations: Record<Language, Translation> = {
     adminSettings: "اکاؤنٹ کی ترتیبات",
     adminReset: "نیوکلیئر ری سیٹ (تمام ڈیٹا صاف کریں)",
     adminPickWinner: "رینڈم فاتح منتخب کریں",
-    adminUpdateAccounts: "ادائیگی کے اکاؤنٹس اپ ڈیٹ کریں"
+    adminUpdateAccounts: "ادائیگی کے اکاؤنٹس اپ ڈیٹ کریں",
+    cnicLabel: "شناختی کارڈ نمبر (00000-0000000-0)",
+    addressLabel: "موجودہ پتہ",
+    casteLabel: "قوم / قبیلہ",
+    privacyPolicyLabel: "پرائیویسی پالیسی",
+    privacyPolicyAgree: "میں پاک اسلام قرعہ اندازی کی شرائط اور پرائیویسی پالیسی سے اتفاق کرتا ہوں۔",
+    uploadSlip: "ادائیگی کی رسید اپ لوڈ کریں (TID خودکار تلاش)",
+    detectingTid: "رسید سے TID تلاش کی جا رہی ہے...",
+    tidDetected: "TID کامیابی سے مل گئی!",
+    tidDetectionError: "TID نہیں مل سکی۔ براہ کرم خود درج کریں یا دوسری تصویر آزمائیں۔",
+    step1: "ذاتی معلومات",
+    step2: "مزید تفصیلات",
+    step3: "ادائیگی اور تصدیق"
   }
 };
 
@@ -819,18 +863,70 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
   const [formData, setFormData] = useState({
     name: user.displayName || '',
     whatsapp: '',
+    cnic: '',
+    address: '',
+    caste: '',
     paymentMethod: 'easypaisa',
-    tid: ''
+    tid: '',
+    agreedToPrivacy: false
   });
   const [submitting, setSubmitting] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [detectionStatus, setDetectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setDetecting(true);
+    setDetectionStatus('idle');
+    
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: [
+            {
+              parts: [
+                { text: "Extract the Transaction ID (TID) from this payment slip screenshot (EasyPaisa, JazzCash, or Bank). Return ONLY the ID number, nothing else. If not found, return 'NOT_FOUND'." },
+                { inlineData: { mimeType: file.type, data: base64 } }
+              ]
+            }
+          ],
+        });
+        
+        const tid = response.text?.trim();
+        if (tid && tid !== 'NOT_FOUND') {
+          setFormData(prev => ({ ...prev, tid }));
+          setDetectionStatus('success');
+        } else {
+          setDetectionStatus('error');
+        }
+        setDetecting(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error(error);
+      setDetectionStatus('error');
+      setDetecting(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (step === 1) {
-      setStep(2);
+    if (step < 3) {
+      setStep(step + 1);
       return;
     }
     
+    if (!formData.agreedToPrivacy) {
+      alert("Please agree to the privacy policy.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       // Check if TID exists
@@ -867,119 +963,262 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
     setSubmitting(false);
   };
 
+  const steps = [
+    { id: 1, label: t.step1, icon: UserIcon },
+    { id: 2, label: t.step2, icon: FileText },
+    { id: 3, label: t.step3, icon: CreditCard }
+  ];
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {step === 1 ? (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-              <UserIcon className="w-4 h-4 text-emerald-600" />
-              {t.nameLabel}
-            </label>
-            <input 
-              required
-              type="text" 
-              value={formData.name}
-              onChange={e => setFormData({...formData, name: e.target.value})}
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-              <Phone className="w-4 h-4 text-emerald-600" />
-              {t.whatsappLabel}
-            </label>
-            <input 
-              required
-              type="tel" 
-              placeholder="03xx-xxxxxxx"
-              value={formData.whatsapp}
-              onChange={e => setFormData({...formData, whatsapp: e.target.value})}
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            />
-          </div>
-          <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 flex items-center justify-center gap-2">
-            Next
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="space-y-4">
-            <label className="text-sm font-bold text-slate-700">{t.paymentMethod}</label>
-            <div className="grid grid-cols-1 gap-3">
-              {[
-                { id: 'easypaisa', label: t.easyPaisa, icon: CreditCard },
-                { id: 'jazzcash', label: t.jazzCash, icon: CreditCard },
-                { id: 'bank', label: t.bankTransfer, icon: CreditCard }
-              ].map(method => (
-                <button
-                  key={method.id}
-                  type="button"
-                  onClick={() => setFormData({...formData, paymentMethod: method.id})}
-                  className={cn(
-                    "flex items-center justify-between p-4 rounded-xl border-2 transition-all",
-                    formData.paymentMethod === method.id ? "border-emerald-600 bg-emerald-50" : "border-slate-100 hover:border-emerald-200"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <method.icon className={cn("w-5 h-5", formData.paymentMethod === method.id ? "text-emerald-600" : "text-slate-400")} />
-                    <span className="font-bold">{method.label}</span>
-                  </div>
-                  {formData.paymentMethod === method.id && <Check className="w-5 h-5 text-emerald-600" />}
-                </button>
-              ))}
+    <div className="space-y-8">
+      {/* Stepper */}
+      <div className="flex items-center justify-between relative px-2">
+        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 -translate-y-1/2 z-0" />
+        {steps.map((s) => (
+          <div key={s.id} className="relative z-10 flex flex-col items-center gap-2">
+            <div className={cn(
+              "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500",
+              step >= s.id ? "bg-emerald-600 text-white shadow-lg shadow-emerald-200" : "bg-white border-2 border-slate-200 text-slate-400"
+            )}>
+              <s.icon className="w-5 h-5" />
             </div>
+            <span className={cn("text-[10px] font-bold uppercase tracking-wider", step >= s.id ? "text-emerald-700" : "text-slate-400")}>
+              {s.label}
+            </span>
           </div>
+        ))}
+      </div>
 
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t.accountDetails}</p>
-            {formData.paymentMethod === 'easypaisa' && (
-              <div>
-                <p className="text-lg font-bold text-emerald-800">{settings.easyPaisa}</p>
-                <p className="text-sm text-slate-600">{settings.easyPaisaTitle}</p>
-              </div>
-            )}
-            {formData.paymentMethod === 'jazzcash' && (
-              <div>
-                <p className="text-lg font-bold text-emerald-800">{settings.jazzCash}</p>
-                <p className="text-sm text-slate-600">{settings.jazzCashTitle}</p>
-              </div>
-            )}
-            {formData.paymentMethod === 'bank' && (
-              <p className="text-sm font-medium text-slate-700">{settings.bankDetails}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-              <Hash className="w-4 h-4 text-emerald-600" />
-              {t.tidLabel}
-            </label>
-            <input 
-              required
-              type="text" 
-              placeholder="e.g. 123456789"
-              value={formData.tid}
-              onChange={e => setFormData({...formData, tid: e.target.value})}
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
-            />
-          </div>
-
-          <div className="flex gap-3">
-            <button type="button" onClick={() => setStep(1)} className="flex-1 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50">Back</button>
-            <button 
-              type="submit" 
-              disabled={submitting}
-              className="flex-[2] bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
-              {t.submit}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {step === 1 && (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                <UserIcon className="w-4 h-4 text-emerald-600" />
+                {t.nameLabel}
+              </label>
+              <input 
+                required
+                type="text" 
+                value={formData.name}
+                onChange={e => setFormData({...formData, name: e.target.value})}
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                <Phone className="w-4 h-4 text-emerald-600" />
+                {t.whatsappLabel}
+              </label>
+              <input 
+                required
+                type="tel" 
+                placeholder="03xx-xxxxxxx"
+                value={formData.whatsapp}
+                onChange={e => setFormData({...formData, whatsapp: e.target.value})}
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+            </div>
+            <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 flex items-center justify-center gap-2 shadow-lg shadow-emerald-100">
+              {t.step2}
+              <ArrowRight className="w-5 h-5" />
             </button>
-          </div>
-        </div>
-      )}
-    </form>
+          </motion.div>
+        )}
+
+        {step === 2 && (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                <FileDigit className="w-4 h-4 text-emerald-600" />
+                {t.cnicLabel}
+              </label>
+              <input 
+                required
+                type="text" 
+                placeholder="00000-0000000-0"
+                value={formData.cnic}
+                onChange={e => {
+                  let val = e.target.value.replace(/\D/g, '');
+                  if (val.length > 13) val = val.slice(0, 13);
+                  let formatted = val;
+                  if (val.length > 5) formatted = val.slice(0, 5) + '-' + val.slice(5);
+                  if (val.length > 12) formatted = formatted.slice(0, 13) + '-' + formatted.slice(13);
+                  setFormData({...formData, cnic: formatted});
+                }}
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-emerald-600" />
+                {t.addressLabel}
+              </label>
+              <textarea 
+                required
+                value={formData.address}
+                onChange={e => setFormData({...formData, address: e.target.value})}
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none min-h-[80px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                <Users className="w-4 h-4 text-emerald-600" />
+                {t.casteLabel}
+              </label>
+              <input 
+                required
+                type="text" 
+                value={formData.caste}
+                onChange={e => setFormData({...formData, caste: e.target.value})}
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setStep(1)} className="flex-1 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50">Back</button>
+              <button type="submit" className="flex-[2] bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 flex items-center justify-center gap-2">
+                {t.step3}
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {step === 3 && (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-6"
+          >
+            <div className="space-y-4">
+              <label className="text-sm font-bold text-slate-700">{t.paymentMethod}</label>
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  { id: 'easypaisa', label: t.easyPaisa, icon: CreditCard },
+                  { id: 'jazzcash', label: t.jazzCash, icon: CreditCard },
+                  { id: 'bank', label: t.bankTransfer, icon: CreditCard }
+                ].map(method => (
+                  <button
+                    key={method.id}
+                    type="button"
+                    onClick={() => setFormData({...formData, paymentMethod: method.id})}
+                    className={cn(
+                      "flex items-center justify-between p-4 rounded-xl border-2 transition-all",
+                      formData.paymentMethod === method.id ? "border-emerald-600 bg-emerald-50" : "border-slate-100 hover:border-emerald-200"
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <method.icon className={cn("w-5 h-5", formData.paymentMethod === method.id ? "text-emerald-600" : "text-slate-400")} />
+                      <span className="font-bold">{method.label}</span>
+                    </div>
+                    {formData.paymentMethod === method.id && <Check className="w-5 h-5 text-emerald-600" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-emerald-900 text-white p-6 rounded-3xl space-y-4 shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+              <div className="relative z-10 space-y-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300">{t.accountDetails}</p>
+                {formData.paymentMethod === 'easypaisa' && (
+                  <div>
+                    <p className="text-2xl font-bold tracking-tight">{settings.easyPaisa}</p>
+                    <p className="text-sm text-emerald-200 opacity-80">{settings.easyPaisaTitle}</p>
+                  </div>
+                )}
+                {formData.paymentMethod === 'jazzcash' && (
+                  <div>
+                    <p className="text-2xl font-bold tracking-tight">{settings.jazzCash}</p>
+                    <p className="text-sm text-emerald-200 opacity-80">{settings.jazzCashTitle}</p>
+                  </div>
+                )}
+                {formData.paymentMethod === 'bank' && (
+                  <p className="text-sm font-medium leading-relaxed">{settings.bankDetails}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  <Hash className="w-4 h-4 text-emerald-600" />
+                  {t.tidLabel}
+                </label>
+                <label className="cursor-pointer bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-bold hover:bg-emerald-200 transition-colors flex items-center gap-1">
+                  <Camera className="w-3 h-3" />
+                  {t.uploadSlip}
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </label>
+              </div>
+              
+              <div className="relative">
+                <input 
+                  required
+                  type="text" 
+                  placeholder="e.g. 123456789"
+                  value={formData.tid}
+                  onChange={e => setFormData({...formData, tid: e.target.value})}
+                  className={cn(
+                    "w-full border rounded-xl px-4 py-4 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-lg",
+                    detectionStatus === 'success' ? "border-emerald-500 bg-emerald-50" : "border-slate-200"
+                  )}
+                />
+                {detecting && (
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-xs text-emerald-600 font-bold">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    {t.detectingTid}
+                  </div>
+                )}
+              </div>
+              
+              {detectionStatus === 'success' && <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1"><Check className="w-3 h-3" /> {t.tidDetected}</p>}
+              {detectionStatus === 'error' && <p className="text-[10px] text-red-500 font-bold flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {t.tidDetectionError}</p>}
+            </div>
+
+            <div className="space-y-4">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input 
+                  type="checkbox" 
+                  checked={formData.agreedToPrivacy}
+                  onChange={e => setFormData({...formData, agreedToPrivacy: e.target.checked})}
+                  className="mt-1 w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-slate-700 group-hover:text-slate-900 transition-colors">
+                    {t.privacyPolicyAgree}
+                  </p>
+                  <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                    <Info className="w-3 h-3" />
+                    Your data is encrypted and secure
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setStep(2)} className="flex-1 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50">Back</button>
+              <button 
+                type="submit" 
+                disabled={submitting || detecting}
+                className="flex-[2] bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+              >
+                {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+                {t.submit}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </form>
+    </div>
   );
 }
 
@@ -1228,6 +1467,18 @@ function AdminDashboard({ t, lang, settings, setSettings, onClose }: any) {
                 <div className="flex justify-between items-center py-2 border-b">
                   <span className="text-slate-500">WhatsApp</span>
                   <span className="font-bold">{selected.whatsapp}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-slate-500">CNIC</span>
+                  <span className="font-bold font-mono">{selected.cnic}</span>
+                </div>
+                <div className="flex flex-col py-2 border-b gap-1">
+                  <span className="text-slate-500">Address</span>
+                  <span className="font-medium text-sm">{selected.address}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-slate-500">Caste</span>
+                  <span className="font-bold">{selected.caste}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b">
                   <span className="text-slate-500">TID</span>
