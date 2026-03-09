@@ -68,7 +68,12 @@ import {
   Star,
   ShieldCheck,
   Zap,
-  Gift
+  Gift,
+  Share2,
+  Printer,
+  Download,
+  Calendar,
+  UserPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -181,6 +186,21 @@ interface Translation {
   step3Desc: string;
   persuasionTitle: string;
   persuasionDesc: string;
+  share: string;
+  shareTitle: string;
+  shareText: string;
+  printSlip: string;
+  confirmationSlip: string;
+  slipSerial: string;
+  slipDate: string;
+  slipNote: string;
+  genderLabel: string;
+  dobLabel: string;
+  passportLabel: string;
+  emergencyNameLabel: string;
+  emergencyNumberLabel: string;
+  male: string;
+  female: string;
 }
 
 const translations: Record<Language, Translation> = {
@@ -263,7 +283,22 @@ const translations: Record<Language, Translation> = {
     step3Title: "Verification",
     step3Desc: "Upload your payment slip. Our AI will verify it instantly.",
     persuasionTitle: "Fulfill Your Umrah Desires",
-    persuasionDesc: "Imagine standing in front of the Holy Kaaba. For just 50 RS, you could be the next one chosen for this blessed journey. Don't let this chance slip away!"
+    persuasionDesc: "Imagine standing in front of the Holy Kaaba. For just 50 RS, you could be the next one chosen for this blessed journey. Don't let this chance slip away!",
+    share: "Invite Friends",
+    shareTitle: "Pak-Islam Lottery",
+    shareText: "Join Pak-Islam Hajj & Umrah Lottery for just 50 RS! Your journey to the holy lands starts here.",
+    printSlip: "Print Confirmation Slip",
+    confirmationSlip: "Official Confirmation Slip",
+    slipSerial: "Serial No",
+    slipDate: "Issue Date",
+    slipNote: "This is an electronically generated slip. Please keep it safe for the final draw.",
+    genderLabel: "Gender",
+    dobLabel: "Date of Birth",
+    passportLabel: "Passport Number (Optional)",
+    emergencyNameLabel: "Emergency Contact Name",
+    emergencyNumberLabel: "Emergency Contact Number",
+    male: "Male",
+    female: "Female"
   },
   ur: {
     title: "پاک اسلام حج و عمرہ قرعہ اندازی",
@@ -344,11 +379,163 @@ const translations: Record<Language, Translation> = {
     step3Title: "تصدیق",
     step3Desc: "اپنی ادائیگی کی رسید اپ لوڈ کریں۔ ہمارا AI فوری طور پر اس کی تصدیق کرے گا۔",
     persuasionTitle: "اپنی عمرہ کی خواہشات پوری کریں",
-    persuasionDesc: "خانہ کعبہ کے سامنے کھڑے ہونے کا تصور کریں۔ صرف 50 روپے میں، آپ اس بابرکت سفر کے لیے منتخب ہونے والے اگلے فرد ہو سکتے ہیں۔ اس موقع کو ہاتھ سے نہ جانے دیں!"
+    persuasionDesc: "خانہ کعبہ کے سامنے کھڑے ہونے کا تصور کریں۔ صرف 50 روپے میں، آپ اس بابرکت سفر کے لیے منتخب ہونے والے اگلے فرد ہو سکتے ہیں۔ اس موقع کو ہاتھ سے نہ جانے دیں!",
+    share: "دوستوں کو دعوت دیں",
+    shareTitle: "پاک اسلام قرعہ اندازی",
+    shareText: "صرف 50 روپے میں پاک اسلام حج اور عمرہ قرعہ اندازی میں شامل ہوں! آپ کا مقدس مقامات کا سفر یہاں سے شروع ہوتا ہے۔",
+    printSlip: "تصدیقی سلپ پرنٹ کریں",
+    confirmationSlip: "آفیشل تصدیقی سلپ",
+    slipSerial: "سیریل نمبر",
+    slipDate: "تاریخ اجراء",
+    slipNote: "یہ ایک الیکٹرانک طور پر تیار کردہ سلپ ہے۔ براہ کرم اسے فائنل ڈرا کے لیے محفوظ رکھیں۔",
+    genderLabel: "جنس",
+    dobLabel: "تاریخ پیدائش",
+    passportLabel: "پاسپورٹ نمبر (اختیاری)",
+    emergencyNameLabel: "ہنگامی رابطہ کا نام",
+    emergencyNumberLabel: "ہنگامی رابطہ نمبر",
+    male: "مرد",
+    female: "عورت"
   }
 };
-
 // --- Components ---
+
+// --- Confirmation Slip Component ---
+const ConfirmationSlip = ({ data, t, lang, onClose }: { data: any, t: Translation, lang: Language, onClose: () => void }) => {
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 print:p-0 print:bg-white"
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden print:shadow-none print:rounded-none"
+      >
+        {/* Header - Hidden in Print */}
+        <div className="p-4 border-b flex justify-between items-center bg-emerald-600 text-white print:hidden">
+          <h3 className="font-bold">{t.confirmationSlip}</h3>
+          <div className="flex gap-2">
+            <button onClick={handlePrint} className="p-2 hover:bg-emerald-700 rounded-lg transition-colors">
+              <Printer className="w-5 h-5" />
+            </button>
+            <button onClick={onClose} className="p-2 hover:bg-emerald-700 rounded-lg transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Slip Content */}
+        <div className="p-8 md:p-12 relative print:p-12">
+          {/* Watermark */}
+          <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none select-none">
+            <Moon className="w-96 h-96 text-emerald-900 rotate-12" />
+          </div>
+
+          <div className="relative z-10 space-y-8">
+            {/* Slip Header */}
+            <div className="flex justify-between items-start border-b-2 border-emerald-100 pb-6">
+              <div className="flex items-center gap-4">
+                <div className="bg-emerald-600 p-3 rounded-2xl">
+                  <Moon className="text-white w-8 h-8" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-emerald-900 tracking-tighter uppercase">{t.title}</h2>
+                  <p className="text-xs text-emerald-600 font-bold tracking-widest uppercase">Official Confirmation</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.slipSerial}</p>
+                <p className="text-xl font-mono font-bold text-emerald-700">#{data.id.toString().padStart(6, '0')}</p>
+              </div>
+            </div>
+
+            {/* Main Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.nameLabel}</label>
+                  <p className="text-lg font-bold text-slate-800">{data.name}</p>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.whatsappLabel}</label>
+                  <p className="text-lg font-bold text-slate-800">{data.whatsapp}</p>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.cnicLabel}</label>
+                  <p className="text-lg font-bold text-slate-800">{data.cnic}</p>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.genderLabel}</label>
+                  <p className="text-lg font-bold text-slate-800">{data.gender === 'male' ? t.male : t.female}</p>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.dobLabel}</label>
+                  <p className="text-lg font-bold text-slate-800">{data.dob}</p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                  <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{t.tokenNumber}</label>
+                  <p className="text-3xl font-black text-emerald-900 tracking-tighter">{data.tokenNumber}</p>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.passportLabel}</label>
+                  <p className="text-lg font-bold text-slate-800">{data.passport || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.emergencyNameLabel}</label>
+                  <p className="text-lg font-bold text-slate-800">{data.emergencyName}</p>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.emergencyNumberLabel}</label>
+                  <p className="text-lg font-bold text-slate-800">{data.emergencyNumber}</p>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.tidLabel}</label>
+                  <p className="text-lg font-mono font-bold text-slate-800">{data.tid}</p>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.slipDate}</label>
+                  <p className="text-sm font-bold text-slate-800">{new Date(data.timestamp).toLocaleDateString()}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Address */}
+            <div className="pt-4 border-t border-emerald-50">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.addressLabel}</label>
+              <p className="text-sm text-slate-600 leading-relaxed">{data.address}</p>
+            </div>
+
+            {/* Footer */}
+            <div className="pt-8 flex flex-col items-center text-center space-y-4">
+              <div className="flex items-center gap-2 text-emerald-700 font-bold bg-emerald-50 px-4 py-1.5 rounded-full border border-emerald-100">
+                <ShieldCheck className="w-4 h-4" />
+                <span className="text-[10px] tracking-widest uppercase">Verified Application</span>
+              </div>
+              <p className="text-[10px] text-slate-400 max-w-sm leading-relaxed italic">
+                {t.slipNote}
+              </p>
+              
+              {/* QR Code Placeholder / Stamp */}
+              <div className="pt-4 opacity-20">
+                <div className="w-16 h-16 border-4 border-emerald-900 rounded-2xl flex items-center justify-center rotate-12">
+                  <Moon className="w-8 h-8 text-emerald-900" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -380,24 +567,28 @@ export default function App() {
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
-
   const [showTransparencyLog, setShowTransparencyLog] = useState(false);
   const [approvedTokens, setApprovedTokens] = useState<string[]>([]);
+  const [showSlip, setShowSlip] = useState<any>(null);
 
   const t = translations[lang];
 
   // Fetch Stats
   const fetchStats = useCallback(async () => {
     try {
-      const q = query(collection(db, 'participants'));
-      const snap = await getDocs(q);
-      const all = snap.docs.map(d => d.data());
-      const approvedCount = all.filter((p: any) => p.status === 'approved').length;
+      const res = await fetch('/api/stats');
+      const data = await res.json();
+      
+      const res2 = await fetch('/api/participants/approved-tokens');
+      const approved = await res2.json();
+      
       setStats({
-        total: all.length + 2000 + (approvedCount * 10), // Increase total by 10 for every approval
-        approved: approvedCount
+        total: data.total + 2000 + (data.approved * 10),
+        approved: data.approved
       });
-      setApprovedTokens(all.filter((p: any) => p.status === 'approved').map((p: any) => p.tokenNumber));
+      if (Array.isArray(approved)) {
+        setApprovedTokens(approved);
+      }
     } catch (error) {
       console.error("Fetch stats error:", error);
     }
@@ -416,7 +607,6 @@ export default function App() {
 
   // Auth Listener
   useEffect(() => {
-    // Safety timeout: if auth doesn't respond in 8 seconds, stop loading
     const timer = setTimeout(() => {
       setLoading(false);
     }, 8000);
@@ -426,35 +616,12 @@ export default function App() {
         setUser(u);
         if (u) {
           setIsAdmin(u.email === ADMIN_EMAIL);
-          
-          // Fetch user application status
-          const q = query(collection(db, 'participants'), where('uid', '==', u.uid), limit(1));
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            setUserApplication(snap.docs[0].data());
-          } else {
-            setUserApplication(null);
-          }
-
-          // Check device lock
-          if (deviceToken) {
-            const userDoc = await getDoc(doc(db, 'users', u.uid));
-            if (userDoc.exists()) {
-              if (userDoc.data().deviceToken !== deviceToken) {
-                // Device mismatch - but only if not admin
-                if (u.email !== ADMIN_EMAIL) {
-                  alert(t.deviceLockError);
-                  signOut(auth);
-                }
-              }
-            } else {
-              await setDoc(doc(db, 'users', u.uid), {
-                email: u.email,
-                deviceToken: deviceToken,
-                createdAt: serverTimestamp()
-              });
-            }
-          }
+          const token = await u.getIdToken();
+          const res = await fetch(`/api/user/application?uid=${u.uid}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await res.json();
+          setUserApplication(data);
         } else {
           setIsAdmin(false);
         }
@@ -469,21 +636,16 @@ export default function App() {
       clearTimeout(timer);
       unsubscribe();
     };
-  }, [deviceToken, lang, t.deviceLockError]);
+  }, [deviceToken, lang]);
 
   // Fetch Settings & Winner
   useEffect(() => {
     const fetchData = async () => {
-      const settingsDoc = await getDoc(doc(db, 'settings', 'accounts'));
-      if (settingsDoc.exists()) {
-        const data = settingsDoc.data() as any;
-        setSettings(data);
-        if (data.autoDrawTime) setAutoDrawTime(data.autoDrawTime);
-      }
-      const winnerDoc = await getDoc(doc(db, 'winners', 'current'));
-      if (winnerDoc.exists()) {
-        setWinner(winnerDoc.data());
-      }
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      setSettings(data);
+      if (data.autoDrawTime) setAutoDrawTime(data.autoDrawTime);
+      if (data.winner) setWinner(data.winner);
     };
     fetchData();
   }, []);
@@ -580,20 +742,14 @@ export default function App() {
     if (!searchQuery) return;
     setLoading(true);
     try {
-      const q = query(
-        collection(db, 'participants'),
-        where('whatsapp', '==', searchQuery)
-      );
-      const q2 = query(
-        collection(db, 'participants'),
-        where('tid', '==', searchQuery)
-      );
-      
-      const [snap1, snap2] = await Promise.all([getDocs(q), getDocs(q2)]);
-      const results = [...snap1.docs, ...snap2.docs];
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch(`/api/participants?search=${searchQuery}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      const results = await res.json();
       
       if (results.length > 0) {
-        setSearchResult(results[0].data());
+        setSearchResult(results[0]);
       } else {
         setSearchResult(null);
         alert("No application found.");
@@ -608,6 +764,25 @@ export default function App() {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: t.shareTitle,
+      text: t.shareText,
+      url: window.location.origin
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+        alert(lang === 'ur' ? "لنک کاپی کر لیا گیا ہے!" : "Link copied to clipboard!");
+      }
+    } catch (err) {
+      console.error("Error sharing:", err);
+    }
   };
 
   if (loading) {
@@ -631,6 +806,15 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4">
+            <button 
+              onClick={handleShare}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-200 hover:bg-emerald-50 transition-colors text-sm font-medium text-emerald-700"
+              title={t.share}
+            >
+              <Share2 className="w-4 h-4" />
+              <span className="hidden sm:inline">{t.share}</span>
+            </button>
+
             <button 
               onClick={() => setLang(l => l === 'en' ? 'ur' : 'en')}
               className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-200 hover:bg-emerald-50 transition-colors text-sm font-medium"
@@ -693,7 +877,7 @@ export default function App() {
                 </div>
 
                 <div className="relative h-full flex items-stretch">
-                  {/* Madina Side */}
+                  {/* Kaaba Side (Left) */}
                   <div className="flex-1 relative flex flex-col items-center justify-center group">
                     <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                     <motion.div 
@@ -703,17 +887,17 @@ export default function App() {
                       className="relative z-10 flex flex-col items-center"
                     >
                       <div className="relative">
-                        <div className="absolute inset-0 bg-emerald-400/20 blur-3xl rounded-full scale-150 animate-pulse" />
+                        <div className="absolute inset-0 bg-emerald-900/10 blur-3xl rounded-full scale-150 animate-pulse" />
                         <img 
-                          src="https://images.unsplash.com/photo-1580418827493-f2b22c0a76cb?auto=format&fit=crop&q=80&w=800" 
-                          alt="Madina" 
+                          src="https://images.unsplash.com/photo-1565552645632-d7c5f76a16be?auto=format&fit=crop&q=80&w=800" 
+                          alt="Kaaba" 
                           className="w-44 h-44 md:w-72 md:h-72 object-cover rounded-[32px] md:rounded-[64px] shadow-2xl border-4 border-white transform -rotate-3 group-hover:rotate-0 transition-transform duration-700"
                           referrerPolicy="no-referrer"
                         />
                       </div>
                       <div className="mt-6 text-center">
-                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.4em] mb-1">The Blessed</p>
-                        <h4 className="text-2xl md:text-4xl font-black text-emerald-950 tracking-tighter">MADINA</h4>
+                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.4em] mb-1">The Holy</p>
+                        <h4 className="text-2xl md:text-4xl font-black text-emerald-950 tracking-tighter">KHANA KABA</h4>
                       </div>
                     </motion.div>
                   </div>
@@ -726,7 +910,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Kaaba Side */}
+                  {/* Madina Side (Right) */}
                   <div className="flex-1 relative flex flex-col items-center justify-center group">
                     <div className="absolute inset-0 bg-gradient-to-l from-emerald-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                     <motion.div 
@@ -736,17 +920,17 @@ export default function App() {
                       className="relative z-10 flex flex-col items-center"
                     >
                       <div className="relative">
-                        <div className="absolute inset-0 bg-emerald-900/10 blur-3xl rounded-full scale-150 animate-pulse" />
+                        <div className="absolute inset-0 bg-emerald-400/20 blur-3xl rounded-full scale-150 animate-pulse" />
                         <img 
-                          src="https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?auto=format&fit=crop&q=80&w=800" 
-                          alt="Kaaba" 
+                          src="https://images.unsplash.com/photo-1580418827493-f2b22c0a76cb?auto=format&fit=crop&q=80&w=800" 
+                          alt="Madina" 
                           className="w-44 h-44 md:w-72 md:h-72 object-cover rounded-[32px] md:rounded-[64px] shadow-2xl border-4 border-white transform rotate-3 group-hover:rotate-0 transition-transform duration-700"
                           referrerPolicy="no-referrer"
                         />
                       </div>
                       <div className="mt-6 text-center">
-                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.4em] mb-1">The Holy</p>
-                        <h4 className="text-2xl md:text-4xl font-black text-emerald-950 tracking-tighter">KHANA KABA</h4>
+                        <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.4em] mb-1">The Blessed</p>
+                        <h4 className="text-2xl md:text-4xl font-black text-emerald-950 tracking-tighter">MADINA</h4>
                       </div>
                     </motion.div>
                   </div>
@@ -797,17 +981,18 @@ export default function App() {
                       animate={{ scale: 1, opacity: 1 }}
                       className="bg-white p-8 rounded-[40px] shadow-2xl border-2 border-emerald-500 flex flex-col items-center gap-4 text-center max-w-md"
                     >
-                      <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 animate-bounce">
-                        <Clock className="w-10 h-10" />
+                      <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600">
+                        {userApplication.status === 'approved' ? <CheckCircle className="w-10 h-10" /> : <Clock className="w-10 h-10 animate-bounce" />}
                       </div>
                       <div className="space-y-2">
                         <h3 className="text-3xl font-black text-emerald-900 uppercase tracking-tighter">
                           {userApplication.status === 'pending' ? t.pending : userApplication.status.toUpperCase()}
                         </h3>
                         <p className="text-emerald-700 font-bold leading-tight">
-                          {lang === 'en' 
-                            ? "Your journey to the Holy Lands is being verified. Have faith in Allah's plan!" 
-                            : "مقدس مقامات کے لیے آپ کے سفر کی تصدیق ہو رہی ہے۔ اللہ کے فیصلے پر بھروسہ رکھیں!"}
+                          {userApplication.status === 'approved' 
+                            ? (lang === 'en' ? "Congratulations! Your application is approved. Print your slip below." : "مبارک ہو! آپ کی درخواست منظور ہو گئی ہے۔ اپنی سلپ نیچے سے پرنٹ کریں۔")
+                            : (lang === 'en' ? "Your journey to the Holy Lands is being verified. Have faith in Allah's plan!" : "مقدس مقامات کے لیے آپ کے سفر کی تصدیق ہو رہی ہے۔ اللہ کے فیصلے پر بھروسہ رکھیں!")
+                          }
                         </p>
                         <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-100 mt-2">
                           <p className="text-[10px] text-emerald-800 font-medium italic">
@@ -817,18 +1002,33 @@ export default function App() {
                           </p>
                         </div>
                       </div>
-                      <div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden">
-                        <motion.div 
-                          initial={{ x: '-100%' }}
-                          animate={{ x: '100%' }}
-                          transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                          className="w-full h-full bg-emerald-500"
-                        />
-                      </div>
+                      
+                      {userApplication.status === 'approved' && (
+                        <button 
+                          onClick={() => setShowSlip(userApplication)}
+                          className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white py-4 rounded-2xl font-bold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-100 mt-2"
+                        >
+                          <Printer className="w-5 h-5" />
+                          {t.printSlip}
+                        </button>
+                      )}
+
+                      {userApplication.status === 'pending' && (
+                        <div className="w-full h-2 bg-emerald-100 rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ x: '-100%' }}
+                            animate={{ x: '100%' }}
+                            transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                            className="w-full h-full bg-emerald-500"
+                          />
+                        </div>
+                      )}
                     </motion.div>
-                    <p className="text-sm font-black text-emerald-900/40 uppercase tracking-[0.3em]">
-                      Verification in progress
-                    </p>
+                    {userApplication.status === 'pending' && (
+                      <p className="text-sm font-black text-emerald-900/40 uppercase tracking-[0.3em]">
+                        Verification in progress
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <button 
@@ -841,6 +1041,22 @@ export default function App() {
                     <ArrowRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
                   </button>
                 )}
+
+                <motion.button 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1 }}
+                  onClick={handleShare}
+                  className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-white border-2 border-emerald-100 text-emerald-700 font-bold hover:bg-emerald-50 transition-all shadow-sm group"
+                >
+                  <div className="bg-emerald-100 p-2 rounded-lg group-hover:scale-110 transition-transform">
+                    <Share2 className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs uppercase tracking-widest opacity-60 font-black">{lang === 'en' ? 'Share for Sawab' : 'ثواب کے لیے شیئر کریں'}</p>
+                    <p className="text-lg leading-none">{t.share}</p>
+                  </div>
+                </motion.button>
               </div>
             </section>
 
@@ -1046,9 +1262,18 @@ export default function App() {
                         <StatusBadge status={searchResult.status} t={t} />
                       </div>
                       {searchResult.tokenNumber && (
-                        <div className="flex justify-between items-center bg-emerald-50 p-4 rounded-xl">
-                          <span className="text-emerald-700 font-medium">{t.tokenNumber}</span>
-                          <span className="text-2xl font-mono font-bold text-emerald-900">{searchResult.tokenNumber}</span>
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center bg-emerald-50 p-4 rounded-xl">
+                            <span className="text-emerald-700 font-medium">{t.tokenNumber}</span>
+                            <span className="text-2xl font-mono font-bold text-emerald-900">{searchResult.tokenNumber}</span>
+                          </div>
+                          <button 
+                            onClick={() => setShowSlip(searchResult)}
+                            className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-100"
+                          >
+                            <Printer className="w-5 h-5" />
+                            {t.printSlip}
+                          </button>
                         </div>
                       )}
                     </motion.div>
@@ -1192,6 +1417,18 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Confirmation Slip Modal */}
+      <AnimatePresence>
+        {showSlip && (
+          <ConfirmationSlip 
+            data={showSlip} 
+            t={t} 
+            lang={lang} 
+            onClose={() => setShowSlip(null)} 
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -1226,6 +1463,11 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
     cnic: '',
     address: '',
     caste: '',
+    gender: 'male',
+    dob: '',
+    passport: '',
+    emergencyName: '',
+    emergencyNumber: '',
     senderName: '',
     senderNumber: '',
     paymentMethod: 'easypaisa',
@@ -1282,33 +1524,28 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
 
     setSubmitting(true);
     try {
-      // Check if TID exists
-      const q = query(collection(db, 'participants'), where('tid', '==', formData.tid));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        alert(t.usedTidError);
-        setSubmitting(false);
-        return;
-      }
-
-      // Check if user already applied
-      const qUser = query(collection(db, 'participants'), where('email', '==', user.email));
-      const snapUser = await getDocs(qUser);
-      if (!snapUser.empty) {
-        alert("You have already submitted an application.");
-        setSubmitting(false);
-        return;
-      }
-
-      await addDoc(collection(db, 'participants'), {
-        ...formData,
-        amount: 50, // Default to 50 RS
-        email: user.email,
-        uid: user.uid,
-        deviceToken,
-        status: 'pending',
-        timestamp: serverTimestamp()
+      const token = await user.getIdToken();
+      const res = await fetch('/api/participants', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...formData,
+          uid: user.uid,
+          email: user.email,
+          deviceToken
+        })
       });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Submission failed");
+        setSubmitting(false);
+        return;
+      }
       
       // Show hopeful message
       alert(lang === 'ur' 
@@ -1389,6 +1626,35 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
                 className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-emerald-600" />
+                  {t.genderLabel}
+                </label>
+                <select 
+                  value={formData.gender}
+                  onChange={e => setFormData({...formData, gender: e.target.value})}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                >
+                  <option value="male">{t.male}</option>
+                  <option value="female">{t.female}</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-emerald-600" />
+                  {t.dobLabel}
+                </label>
+                <input 
+                  required
+                  type="date" 
+                  value={formData.dob}
+                  onChange={e => setFormData({...formData, dob: e.target.value})}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
+            </div>
             <button type="submit" className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 flex items-center justify-center gap-2 shadow-lg shadow-emerald-100">
               {t.step2}
               <ArrowRight className="w-5 h-5" />
@@ -1446,6 +1712,53 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
                 onChange={e => setFormData({...formData, caste: e.target.value})}
                 className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-emerald-600" />
+                {t.passportLabel}
+              </label>
+              <input 
+                type="text" 
+                value={formData.passport}
+                onChange={e => setFormData({...formData, passport: e.target.value})}
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                placeholder="Passport Number (if available)"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-emerald-600" />
+                  {t.emergencyNameLabel}
+                </label>
+                <input 
+                  required
+                  type="text" 
+                  value={formData.emergencyName}
+                  onChange={e => setFormData({...formData, emergencyName: e.target.value})}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-emerald-600" />
+                  {t.emergencyNumberLabel}
+                </label>
+                <input 
+                  required
+                  type="text" 
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={formData.emergencyNumber}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    if (val.length <= 11) setFormData({...formData, emergencyNumber: val});
+                  }}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  placeholder="03xxxxxxxxx"
+                />
+              </div>
             </div>
             <div className="flex gap-3">
               <button type="button" onClick={() => setStep(1)} className="flex-1 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50">Back</button>
@@ -1677,9 +1990,16 @@ function AdminDashboard({ t, lang, settings, setSettings, onClose }: any) {
 
   const fetchParticipants = useCallback(async () => {
     setLoading(true);
-    const q = query(collection(db, 'participants'), orderBy('timestamp', 'desc'));
-    const snap = await getDocs(q);
-    setParticipants(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const res = await fetch('/api/participants', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setParticipants(data);
+    } catch (e) {
+      console.error(e);
+    }
     setLoading(false);
   }, []);
 
@@ -1688,34 +2008,38 @@ function AdminDashboard({ t, lang, settings, setSettings, onClose }: any) {
   }, [fetchParticipants]);
 
   const handleAction = async (id: string, action: string) => {
-    const p = participants.find(x => x.id === id);
-    if (!p) return;
-
     try {
       setLoading(true);
+      const token = await auth.currentUser?.getIdToken();
       if (action === 'approve') {
         const tokenNumber = `PK-${Math.floor(1000 + Math.random() * 9000)}`;
-        await updateDoc(doc(db, 'participants', id), { 
-          status: 'approved', 
-          tokenNumber,
-          approvedAt: serverTimestamp() 
+        await fetch(`/api/participants/${id}`, {
+          method: 'PATCH',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ status: 'approved', tokenNumber })
         });
         alert(`Approved! Token: ${tokenNumber}`);
       } else if (action === 'reject') {
-        await updateDoc(doc(db, 'participants', id), { 
-          status: 'rejected',
-          rejectedAt: serverTimestamp() 
+        await fetch(`/api/participants/${id}`, {
+          method: 'PATCH',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ status: 'rejected' })
         });
         alert("Application Rejected");
       } else if (action === 'blacklist') {
-        await updateDoc(doc(db, 'participants', id), { 
-          status: 'blacklisted',
-          blacklistedAt: serverTimestamp() 
-        });
-        await setDoc(doc(db, 'blacklist', p.email), { 
-          email: p.email, 
-          deviceToken: p.deviceToken, 
-          timestamp: serverTimestamp() 
+        await fetch(`/api/participants/${id}`, {
+          method: 'PATCH',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ status: 'blacklisted' })
         });
         alert("User Blacklisted");
       }
@@ -1733,9 +2057,14 @@ function AdminDashboard({ t, lang, settings, setSettings, onClose }: any) {
     e.preventDefault();
     try {
       setLoading(true);
-      await setDoc(doc(db, 'settings', 'accounts'), {
-        ...settings,
-        updatedAt: serverTimestamp()
+      const token = await auth.currentUser?.getIdToken();
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(settings)
       });
       alert("Settings updated successfully!");
     } catch (e: any) {
@@ -1753,10 +2082,14 @@ function AdminDashboard({ t, lang, settings, setSettings, onClose }: any) {
       return;
     }
     const winner = approved[Math.floor(Math.random() * approved.length)];
-    await setDoc(doc(db, 'winners', 'current'), {
-      name: winner.name,
-      tokenNumber: winner.tokenNumber,
-      timestamp: serverTimestamp()
+    const token = await auth.currentUser?.getIdToken();
+    await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ winner })
     });
     alert(`Winner picked: ${winner.name}`);
     window.location.reload();
@@ -1765,11 +2098,11 @@ function AdminDashboard({ t, lang, settings, setSettings, onClose }: any) {
   const nuclearReset = async () => {
     if (!confirm("ARE YOU SURE? This will delete ALL participant data!")) return;
     try {
-      const batch = writeBatch(db);
-      participants.forEach(p => {
-        batch.delete(doc(db, 'participants', p.id));
+      const token = await auth.currentUser?.getIdToken();
+      await fetch('/api/admin/reset', { 
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      await batch.commit();
       alert("All data cleared.");
       fetchParticipants();
     } catch (e) {
@@ -2000,6 +2333,22 @@ function AdminDashboard({ t, lang, settings, setSettings, onClose }: any) {
                 <div className="flex justify-between items-center py-2 border-b">
                   <span className="text-slate-500">Caste</span>
                   <span className="font-bold">{selected.caste}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b text-xs">
+                  <span className="text-slate-500">Gender</span>
+                  <span className="font-bold uppercase">{selected.gender}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b text-xs">
+                  <span className="text-slate-500">DOB</span>
+                  <span className="font-bold">{selected.dob}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b text-xs">
+                  <span className="text-slate-500">Passport</span>
+                  <span className="font-bold">{selected.passport || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b text-xs">
+                  <span className="text-slate-500">Emergency Contact</span>
+                  <span className="font-bold">{selected.emergencyName} ({selected.emergencyNumber})</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b">
                   <span className="text-slate-500">Sender Name</span>
