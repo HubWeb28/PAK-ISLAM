@@ -1541,6 +1541,60 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
     setSubmitting(true);
     try {
       const token = await user.getIdToken();
+
+      if (formData.paymentMethod === 'jazzcash') {
+        const res = await fetch('/api/payment/initiate', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            amount: 50,
+            participantData: {
+              ...formData,
+              deviceToken
+            }
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.error || "Payment initiation failed");
+          setSubmitting(false);
+          return;
+        }
+
+        // Create a hidden form and submit it to JazzCash
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = data.apiUrl;
+
+        for (const key in data.postData) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = data.postData[key];
+          form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        return;
+      }
+
+      if (!formData.slipImage) {
+        alert("Please upload your payment slip screenshot.");
+        setSubmitting(false);
+        return;
+      }
+
+      if (!formData.tid || formData.tid.length < 5) {
+        alert("Please enter a valid Transaction ID.");
+        setSubmitting(false);
+        return;
+      }
+
       const res = await fetch('/api/participants', {
         method: 'POST',
         headers: { 
@@ -1920,56 +1974,58 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                  <Hash className="w-4 h-4 text-emerald-600" />
-                  {t.tidLabel}
-                </label>
-                <label className="cursor-pointer bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-bold hover:bg-emerald-200 transition-colors flex items-center gap-1">
-                  <Camera className="w-3 h-3" />
-                  {formData.slipImage ? "Slip Uploaded" : t.uploadSlip}
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                </label>
-              </div>
-              
-              <div className="relative">
-                <input 
-                  required
-                  type="text" 
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="Enter TID manually"
-                  value={formData.tid}
-                  onChange={e => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    setFormData({...formData, tid: val});
-                  }}
-                  className={cn(
-                    "w-full border rounded-xl px-4 py-4 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-lg",
-                    formData.slipImage ? "border-emerald-500 bg-emerald-50" : "border-slate-200"
+            {formData.paymentMethod !== 'jazzcash' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                    <Hash className="w-4 h-4 text-emerald-600" />
+                    {t.tidLabel}
+                  </label>
+                  <label className="cursor-pointer bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-bold hover:bg-emerald-200 transition-colors flex items-center gap-1">
+                    <Camera className="w-3 h-3" />
+                    {formData.slipImage ? "Slip Uploaded" : t.uploadSlip}
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  </label>
+                </div>
+                
+                <div className="relative">
+                  <input 
+                    required
+                    type="text" 
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="Enter TID manually"
+                    value={formData.tid}
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setFormData({...formData, tid: val});
+                    }}
+                    className={cn(
+                      "w-full border rounded-xl px-4 py-4 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-lg",
+                      formData.slipImage ? "border-emerald-500 bg-emerald-50" : "border-slate-200"
+                    )}
+                  />
+                  {uploading && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-xs text-emerald-600 font-bold">
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Uploading...
+                    </div>
                   )}
-                />
-                {uploading && (
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-xs text-emerald-600 font-bold">
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Uploading...
+                </div>
+                
+                {formData.slipImage && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1"><Check className="w-3 h-3" /> Slip uploaded successfully!</p>
+                    <div className="w-full h-32 rounded-xl overflow-hidden border border-emerald-100 bg-emerald-50 relative">
+                      <img src={formData.slipImage} alt="Slip Preview" className="w-full h-full object-cover opacity-50" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="bg-white/80 px-3 py-1 rounded-full text-[10px] font-bold text-emerald-700 shadow-sm">Preview Saved</span>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-              
-              {formData.slipImage && (
-                <div className="space-y-2">
-                  <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1"><Check className="w-3 h-3" /> Slip uploaded successfully!</p>
-                  <div className="w-full h-32 rounded-xl overflow-hidden border border-emerald-100 bg-emerald-50 relative">
-                    <img src={formData.slipImage} alt="Slip Preview" className="w-full h-full object-cover opacity-50" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="bg-white/80 px-3 py-1 rounded-full text-[10px] font-bold text-emerald-700 shadow-sm">Preview Saved</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
 
             <div className="space-y-4">
               <label className="flex items-start gap-3 cursor-pointer group">

@@ -7,6 +7,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
+import crypto from "crypto";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ADMIN_EMAIL = 'marvelzain43@gmail.com';
@@ -232,6 +233,154 @@ async function startServer() {
 
     const row = await db.get("SELECT * FROM participants WHERE uid = ? ORDER BY timestamp DESC LIMIT 1", [uid]);
     res.json(row || null);
+  });
+
+  // --- JazzCash Integration ---
+  app.post("/api/payment/initiate", authenticate, async (req: any, res: any) => {
+    const { amount, participantData } = req.body;
+    
+    const merchantId = process.env.JAZZCASH_MERCHANT_ID;
+    const password = process.env.JAZZCASH_PASSWORD;
+    const salt = process.env.JAZZCASH_INTEGERITY_SALT;
+    const apiUrl = process.env.JAZZCASH_API_URL;
+    const appUrl = process.env.APP_URL || `http://localhost:3000`;
+
+    if (!merchantId || !password || !salt) {
+      return res.status(500).json({ error: "JazzCash credentials missing" });
+    }
+
+    const pp_Amount = (amount * 100).toString(); // In Paisas
+    const pp_TxnDateTime = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
+    const pp_TxnExpiryDateTime = new Date(Date.now() + 3600000).toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
+    const pp_TxnRefNo = "T" + pp_TxnDateTime;
+    const pp_ReturnURL = `${appUrl}/api/payment/callback`;
+
+    const postData: any = {
+      pp_Version: "1.1",
+      pp_TxnType: "MWALLET",
+      pp_Language: "EN",
+      pp_MerchantID: merchantId,
+      pp_SubMerchantID: "",
+      pp_Password: password,
+      pp_BankID: "TBANK",
+      pp_ProductID: "RE_12345",
+      pp_TxnRefNo: pp_TxnRefNo,
+      pp_Amount: pp_Amount,
+      pp_TxnCurrency: "PKR",
+      pp_TxnDateTime: pp_TxnDateTime,
+      pp_BillReference: "bill123",
+      pp_Description: "Hajj & Umrah Lottery Participation",
+      pp_TxnExpiryDateTime: pp_TxnExpiryDateTime,
+      pp_ReturnURL: pp_ReturnURL,
+      pp_SecureHash: "",
+      pp_MPay_Language: "EN",
+      pp_MobileNumber: participantData.whatsapp,
+      pp_CNIC: participantData.cnic.replace(/-/g, ""),
+    };
+
+    // Store temporary participant data to be saved on success
+    // In a real app, you'd save this to a 'pending_payments' table
+    // For simplicity, we'll pass it in the description or just rely on the callback
+    // But better to save it now as 'pending'
+    try {
+      await db.run(`
+        INSERT INTO participants (
+          uid, email, name, whatsapp, cnic, address, caste, 
+          gender, dob, passport, emergencyName, emergencyNumber,
+          senderName, senderNumber, paymentMethod, tid, status, deviceToken
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        req.user.user_id, req.user.email, participantData.name, participantData.whatsapp, 
+        participantData.cnic, participantData.address, participantData.caste,
+        participantData.gender, participantData.dob, participantData.passport, 
+        participantData.emergencyName, participantData.emergencyNumber,
+        participantData.senderName, participantData.senderNumber, 'jazzcash', 
+        pp_TxnRefNo, 'pending_payment', participantData.deviceToken
+      ]);
+    } catch (e) {
+      console.error("Failed to save pending participant", e);
+    }
+
+    // Sort keys alphabetically for hash calculation
+    const sortedKeys = Object.keys(postData).sort();
+    let hashString = salt + "&";
+    for (const key of sortedKeys) {
+      if (postData[key] !== "" && key !== "pp_SecureHash") {
+        hashString += postData[key] + "&";
+      }
+    }
+    hashString = hashString.slice(0, -1); // Remove last &
+
+    postData.pp_SecureHash = crypto.createHmac("sha256", salt).update(hashString).digest("hex").toUpperCase();
+
+    res.json({ apiUrl, postData });
+  });
+
+  app.post("/api/payment/callback", express.urlencoded({ extended: true }), async (req, res) => {
+    const response = req.body;
+    const salt = process.env.JAZZCASH_INTEGERITY_SALT;
+
+    if (!salt) return res.status(500).send("Configuration error");
+
+    // Verify Hash
+    const sortedKeys = Object.keys(response).sort();
+    let hashString = salt + "&";
+    for (const key of sortedKeys) {
+      if (response[key] !== "" && key !== "pp_SecureHash") {
+        hashString += response[key] + "&";
+      }
+    }
+    hashString = hashString.slice(0, -1);
+    const calculatedHash = crypto.createHmac("sha256", salt).update(hashString).digest("hex").toUpperCase();
+
+    if (calculatedHash !== response.pp_SecureHash) {
+      return res.send("<h1>Invalid Signature</h1>");
+    }
+
+    if (response.pp_ResponseCode === "000") {
+      // Success!
+      const txnRefNo = response.pp_TxnRefNo;
+      const tid = response.pp_RetreivalReferenceNo || txnRefNo;
+      
+      // Generate Token Number
+      const lastToken = await db.get("SELECT tokenNumber FROM participants WHERE tokenNumber IS NOT NULL ORDER BY id DESC LIMIT 1");
+      let nextToken = "PI-1001";
+      if (lastToken) {
+        const num = parseInt(lastToken.tokenNumber.split('-')[1]);
+        nextToken = `PI-${num + 1}`;
+      }
+
+      await db.run(`
+        UPDATE participants 
+        SET status = 'approved', tid = ?, tokenNumber = ? 
+        WHERE tid = ? AND status = 'pending_payment'
+      `, [tid, nextToken, txnRefNo]);
+
+      res.send(`
+        <html>
+          <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f0fdf4;">
+            <div style="background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center;">
+              <h1 style="color: #059669;">MashaAllah! Payment Successful</h1>
+              <p>Your participation has been confirmed automatically.</p>
+              <p>Token Number: <strong>${nextToken}</strong></p>
+              <button onclick="window.location.href='/'" style="background: #059669; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; cursor: pointer; font-weight: bold; margin-top: 1rem;">Go to App</button>
+            </div>
+          </body>
+        </html>
+      `);
+    } else {
+      res.send(`
+        <html>
+          <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #fef2f2;">
+            <div style="background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center;">
+              <h1 style="color: #dc2626;">Payment Failed</h1>
+              <p>${response.pp_ResponseMessage}</p>
+              <button onclick="window.location.href='/'" style="background: #dc2626; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 0.5rem; cursor: pointer; font-weight: bold; margin-top: 1rem;">Try Again</button>
+            </div>
+          </body>
+        </html>
+      `);
+    }
   });
 
   // Vite middleware for development
