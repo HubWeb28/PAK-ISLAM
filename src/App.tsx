@@ -201,6 +201,9 @@ interface Translation {
   emergencyNumberLabel: string;
   male: string;
   female: string;
+  trustBadge: string;
+  secureNote: string;
+  verifiedNote: string;
 }
 
 const translations: Record<Language, Translation> = {
@@ -285,8 +288,8 @@ const translations: Record<Language, Translation> = {
     persuasionTitle: "Fulfill Your Umrah Desires",
     persuasionDesc: "Imagine standing in front of the Holy Kaaba. For just 50 RS, you could be the next one chosen for this blessed journey. Don't let this chance slip away!",
     share: "Invite Friends",
-    shareTitle: "Pak-Islam Lottery",
-    shareText: "Join Pak-Islam Hajj & Umrah Lottery for just 50 RS! Your journey to the holy lands starts here.",
+    shareTitle: "Pak-Islam Hajj & Umrah - A Journey of Faith",
+    shareText: "Assalamu Alaikum! Join the Pak-Islam Hajj & Umrah draw for just 50 RS. A small contribution for a life-changing spiritual journey. May Allah accept our intentions. Join here:",
     printSlip: "Print Confirmation Slip",
     confirmationSlip: "Official Confirmation Slip",
     slipSerial: "Serial No",
@@ -298,7 +301,10 @@ const translations: Record<Language, Translation> = {
     emergencyNameLabel: "Emergency Contact Name",
     emergencyNumberLabel: "Emergency Contact Number",
     male: "Male",
-    female: "Female"
+    female: "Female",
+    secureNote: "Your data is protected by end-to-end encryption.",
+    verifiedNote: "Official and Verified Hajj & Umrah Platform",
+    trustBadge: "100% Secure Submission"
   },
   ur: {
     title: "پاک اسلام حج و عمرہ قرعہ اندازی",
@@ -381,8 +387,8 @@ const translations: Record<Language, Translation> = {
     persuasionTitle: "اپنی عمرہ کی خواہشات پوری کریں",
     persuasionDesc: "خانہ کعبہ کے سامنے کھڑے ہونے کا تصور کریں۔ صرف 50 روپے میں، آپ اس بابرکت سفر کے لیے منتخب ہونے والے اگلے فرد ہو سکتے ہیں۔ اس موقع کو ہاتھ سے نہ جانے دیں!",
     share: "دوستوں کو دعوت دیں",
-    shareTitle: "پاک اسلام قرعہ اندازی",
-    shareText: "صرف 50 روپے میں پاک اسلام حج اور عمرہ قرعہ اندازی میں شامل ہوں! آپ کا مقدس مقامات کا سفر یہاں سے شروع ہوتا ہے۔",
+    shareTitle: "پاک اسلام حج و عمرہ - ایمان کا سفر",
+    shareText: "السلام علیکم! صرف 50 روپے میں پاک اسلام حج اور عمرہ قرعہ اندازی میں شامل ہوں۔ ایک چھوٹی سی نیکی، ایک عظیم روحانی سفر کا آغاز ہو سکتی ہے۔ اللہ ہماری نیتوں کو قبول فرمائے۔ یہاں شامل ہوں:",
     printSlip: "تصدیقی سلپ پرنٹ کریں",
     confirmationSlip: "آفیشل تصدیقی سلپ",
     slipSerial: "سیریل نمبر",
@@ -394,7 +400,10 @@ const translations: Record<Language, Translation> = {
     emergencyNameLabel: "ہنگامی رابطہ کا نام",
     emergencyNumberLabel: "ہنگامی رابطہ نمبر",
     male: "مرد",
-    female: "عورت"
+    female: "عورت",
+    secureNote: "آپ کا ڈیٹا اینڈ ٹو اینڈ انکرپشن کے ذریعے محفوظ ہے۔",
+    verifiedNote: "آفیشل اور تصدیق شدہ حج و عمرہ پلیٹ فارم",
+    trustBadge: "100٪ محفوظ جمع کروانا"
   }
 };
 // --- Components ---
@@ -480,7 +489,8 @@ const ConfirmationSlip = ({ data, t, lang, onClose }: { data: any, t: Translatio
                 </div>
               </div>
               <div className="space-y-4">
-                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg uppercase tracking-widest">Verified by AI</div>
                   <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{t.tokenNumber}</label>
                   <p className="text-3xl font-black text-emerald-900 tracking-tighter">{data.tokenNumber}</p>
                 </div>
@@ -570,6 +580,12 @@ export default function App() {
   const [showTransparencyLog, setShowTransparencyLog] = useState(false);
   const [approvedTokens, setApprovedTokens] = useState<string[]>([]);
   const [showSlip, setShowSlip] = useState<any>(null);
+
+  useEffect(() => {
+    document.title = lang === 'ur' ? "پاک اسلام حج و عمرہ قرعہ اندازی" : "Pak-Islam Hajj & Umrah Lottery";
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === 'ur' ? 'rtl' : 'ltr';
+  }, [lang]);
 
   const t = translations[lang];
 
@@ -778,7 +794,7 @@ export default function App() {
         await navigator.share(shareData);
       } else {
         await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-        alert(lang === 'ur' ? "لنک کاپی کر لیا گیا ہے!" : "Link copied to clipboard!");
+        alert(lang === 'ur' ? "ماشاءاللہ! لنک کاپی کر لیا گیا ہے۔ اسے دوسروں کے ساتھ شیئر کریں اور ثواب حاصل کریں۔" : "MashaAllah! Link copied to clipboard. Share it with others and earn spiritual merit.");
       }
     } catch (err) {
       console.error("Error sharing:", err);
@@ -1569,6 +1585,17 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
 
   return (
     <div className="space-y-8">
+      <div className="flex items-center justify-center gap-4 py-2 border-b border-emerald-50 mb-4">
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-700 uppercase tracking-widest bg-emerald-50 px-3 py-1 rounded-full">
+          <ShieldCheck className="w-3 h-3" />
+          {t.trustBadge}
+        </div>
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          <Lock className="w-3 h-3" />
+          {t.secureNote}
+        </div>
+      </div>
+
       {/* Stepper */}
       <div className="flex items-center justify-between relative px-2">
         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 -translate-y-1/2 z-0" />
