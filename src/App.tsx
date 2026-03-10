@@ -1563,44 +1563,49 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
 
     setSubmitting(true);
     
-    // Simulate Direct Payment Flow for JazzCash/EasyPaisa
-    if (formData.paymentMethod === 'jazzcash' || (formData.paymentMethod === 'easypaisa' && settings.enableEasyPaisaDirect)) {
-      setPaymentStep('processing');
-      
-      // Simulate delay for user to enter MPIN on phone
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
-      setPaymentStep('success');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-
     try {
       const token = await user.getIdToken();
 
-      // For JazzCash, we'll now use a direct API call (simulated or real)
       if (formData.paymentMethod === 'jazzcash') {
-        const res = await fetch('/api/payment/direct', {
+        const res = await fetch('/api/payment/initiate', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
-            ...formData,
-            deviceToken
+            amount: 50,
+            walletNumber: formData.walletNumber,
+            participantData: {
+              ...formData,
+              deviceToken
+            }
           })
         });
 
         const data = await res.json();
         if (!res.ok) {
-          alert(data.error || "Payment failed");
+          alert(data.error || "Payment initiation failed. Please ensure JazzCash credentials are set in App Settings.");
           setSubmitting(false);
           setPaymentStep('form');
           return;
         }
 
-        alert(t.paymentSuccess);
-        onSuccess();
+        // Create a hidden form and submit it to JazzCash
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = data.apiUrl;
+
+        for (const key in data.postData) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = data.postData[key];
+          form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
         return;
       }
 
@@ -2089,16 +2094,70 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
                   </label>
                 </div>
 
-                <div className="flex gap-3">
-                  <button type="button" onClick={() => setStep(3)} className="flex-1 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50">Back</button>
-                  <button 
-                    type="submit" 
-                    disabled={submitting || uploading}
-                    className="flex-[2] bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
-                  >
-                    {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : (formData.paymentMethod === 'jazzcash' || (formData.paymentMethod === 'easypaisa' && settings.enableEasyPaisaDirect) ? "Pay Now & Submit" : t.submit)}
-                    {!submitting && <ArrowRight className="w-5 h-5" />}
-                  </button>
+                <div className="flex flex-col gap-3">
+                  <div className="flex gap-3">
+                    <button type="button" onClick={() => setStep(3)} className="flex-1 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50">Back</button>
+                    <button 
+                      type="submit" 
+                      disabled={submitting || uploading}
+                      className="flex-[2] bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+                    >
+                      {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : (formData.paymentMethod === 'jazzcash' || (formData.paymentMethod === 'easypaisa' && settings.enableEasyPaisaDirect) ? "Pay Now & Submit" : t.submit)}
+                      {!submitting && <ArrowRight className="w-5 h-5" />}
+                    </button>
+                  </div>
+
+                  {formData.paymentMethod === 'jazzcash' && (
+                    <button 
+                      type="button"
+                      disabled={submitting}
+                      onClick={async () => {
+                        if (!formData.walletNumber || formData.walletNumber.length < 11) {
+                          alert("Please enter a valid mobile wallet number first.");
+                          return;
+                        }
+                        setSubmitting(true);
+                        try {
+                          const token = await user.getIdToken();
+                          const initRes = await fetch('/api/payment/initiate', {
+                            method: 'POST',
+                            headers: { 
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                              amount: 50,
+                              walletNumber: formData.walletNumber,
+                              participantData: { ...formData, deviceToken }
+                            })
+                          });
+                          const initData = await initRes.json();
+                          if (!initRes.ok) throw new Error(initData.error);
+
+                          const simRes = await fetch('/api/payment/simulate-success', {
+                            method: 'POST',
+                            headers: { 
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({ txnRefNo: initData.postData.pp_TxnRefNo })
+                          });
+                          const simData = await simRes.json();
+                          if (!simRes.ok) throw new Error(simData.error);
+                          
+                          alert("Test Transaction Successful! Token Number: " + simData.tokenNumber);
+                          onSuccess();
+                        } catch (err: any) {
+                          alert("Simulation failed: " + err.message);
+                        } finally {
+                          setSubmitting(false);
+                        }
+                      }}
+                      className="w-full bg-slate-100 text-slate-700 py-3 rounded-xl font-bold hover:bg-slate-200 text-xs border border-slate-200"
+                    >
+                      Simulate Success (Test Only)
+                    </button>
+                  )}
                 </div>
               </>
             )}

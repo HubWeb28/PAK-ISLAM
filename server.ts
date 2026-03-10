@@ -286,10 +286,10 @@ async function startServer() {
   app.post("/api/payment/initiate", authenticate, async (req: any, res: any) => {
     const { amount, participantData } = req.body;
     
-    const merchantId = process.env.JAZZCASH_MERCHANT_ID;
-    const password = process.env.JAZZCASH_PASSWORD;
-    const salt = process.env.JAZZCASH_INTEGERITY_SALT;
-    const apiUrl = process.env.JAZZCASH_API_URL;
+    const merchantId = process.env.JAZZCASH_MERCHANT_ID || "MC656746";
+    const password = process.env.JAZZCASH_PASSWORD || "t42522c45t";
+    const salt = process.env.JAZZCASH_INTEGERITY_SALT || "x51w84cg85";
+    const apiUrl = process.env.JAZZCASH_API_URL || "https://sandbox.jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform/";
     const appUrl = process.env.APP_URL || `http://localhost:3000`;
 
     if (!merchantId || !password || !salt) {
@@ -309,19 +309,17 @@ async function startServer() {
       pp_MerchantID: merchantId,
       pp_SubMerchantID: "",
       pp_Password: password,
-      pp_BankID: "TBANK",
-      pp_ProductID: "RE_12345",
       pp_TxnRefNo: pp_TxnRefNo,
       pp_Amount: pp_Amount,
       pp_TxnCurrency: "PKR",
       pp_TxnDateTime: pp_TxnDateTime,
-      pp_BillReference: "bill123",
+      pp_BillReference: pp_TxnRefNo,
       pp_Description: "Hajj & Umrah Lottery Participation",
       pp_TxnExpiryDateTime: pp_TxnExpiryDateTime,
       pp_ReturnURL: pp_ReturnURL,
       pp_SecureHash: "",
       pp_MPay_Language: "EN",
-      pp_MobileNumber: participantData.whatsapp,
+      pp_MobileNumber: req.body.walletNumber || participantData.whatsapp,
       pp_CNIC: participantData.cnic.replace(/-/g, ""),
     };
 
@@ -361,6 +359,35 @@ async function startServer() {
     postData.pp_SecureHash = crypto.createHmac("sha256", salt).update(hashString).digest("hex").toUpperCase();
 
     res.json({ apiUrl, postData });
+  });
+
+  app.post("/api/payment/simulate-success", authenticate, async (req: any, res: any) => {
+    const { txnRefNo } = req.body;
+    
+    try {
+      const participant = await db.get("SELECT * FROM participants WHERE tid = ? AND status = 'pending_payment'", [txnRefNo]);
+      if (!participant) {
+        return res.status(404).json({ error: "Pending transaction not found" });
+      }
+
+      // Generate Token Number
+      const lastToken = await db.get("SELECT tokenNumber FROM participants WHERE tokenNumber IS NOT NULL ORDER BY id DESC LIMIT 1");
+      let nextToken = "PI-1001";
+      if (lastToken) {
+        const num = parseInt(lastToken.tokenNumber.split('-')[1]);
+        nextToken = `PI-${num + 1}`;
+      }
+
+      await db.run(`
+        UPDATE participants 
+        SET status = 'approved', tokenNumber = ? 
+        WHERE tid = ?
+      `, [nextToken, txnRefNo]);
+
+      res.json({ success: true, tokenNumber: nextToken });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post("/api/payment/callback", express.urlencoded({ extended: true }), async (req, res) => {
