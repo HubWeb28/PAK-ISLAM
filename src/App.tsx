@@ -54,6 +54,7 @@ import {
   RefreshCw,
   Phone,
   Hash,
+  Lock,
   ArrowRight,
   AlertCircle,
   FileDigit,
@@ -424,7 +425,7 @@ const ConfirmationSlip = ({ data, t, lang, onClose }: { data: any, t: Translatio
       <motion.div 
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
-        className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden print:shadow-none print:rounded-none"
+        className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-y-auto max-h-[95vh] print:max-h-none print:overflow-visible print:shadow-none print:rounded-none"
       >
         {/* Header - Hidden in Print */}
         <div className="p-4 border-b flex justify-between items-center bg-emerald-600 text-white print:hidden">
@@ -980,7 +981,7 @@ export default function App() {
                     <span className="text-sm tracking-widest">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</span>
                     <Star className="w-4 h-4 fill-emerald-700" />
                   </div>
-                  <h2 className="text-5xl sm:text-7xl font-black text-emerald-950 tracking-tight leading-tight">
+                  <h2 className="text-4xl sm:text-7xl font-black text-emerald-950 tracking-tight leading-tight">
                     {t.title}
                   </h2>
                   <p className="text-xl text-emerald-800/70 max-w-2xl mx-auto font-medium">
@@ -1049,7 +1050,7 @@ export default function App() {
                 ) : (
                   <button 
                     onClick={handleApply}
-                    className="group relative bg-emerald-600 text-white px-12 py-6 rounded-[32px] font-black text-2xl hover:bg-emerald-700 hover:scale-105 transition-all shadow-2xl shadow-emerald-200 flex items-center justify-center gap-3 overflow-hidden"
+                    className="group relative bg-emerald-600 text-white px-8 py-4 sm:px-12 sm:py-6 rounded-[32px] font-black text-xl sm:text-2xl hover:bg-emerald-700 hover:scale-105 transition-all shadow-2xl shadow-emerald-200 flex items-center justify-center gap-3 overflow-hidden"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
                     <CheckCircle className="w-8 h-8 fill-white/20" />
@@ -1309,7 +1310,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className={cn("bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden", lang === 'ur' && "rtl")}
+              className={cn("bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-y-auto max-h-[95vh]", lang === 'ur' && "rtl")}
             >
               <div className="bg-emerald-600 p-6 text-white flex justify-between items-center">
                 <div className="flex items-center gap-3">
