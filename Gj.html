@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Z-ONE JazzCash Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f4; text-align: center; }
+        .container { background: white; padding: 30px; border-radius: 10px; max-width: 400px; margin: auto; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        button { background: #d32f2f; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        .test-data { font-size: 12px; color: #666; margin-top: 15px; text-align: left; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>JazzCash Sandbox Test</h2>
+    <p>Amount: <b>Rs. 50.00</b></p>
+    
+    <form id="jc-form" action="https://sandbox.jazzcash.com.pk/CustomerPortal/transaction/Checkout" method="POST">
+        <input type="hidden" name="pp_Version" value="1.1">
+        <input type="hidden" name="pp_TxnType" value="MWALLET">
+        <input type="hidden" name="pp_Language" value="EN">
+        <input type="hidden" name="pp_MerchantID" value="MC656746">
+        <input type="hidden" name="pp_Password" value="f42522c45t">
+        <input type="hidden" name="pp_Amount" value="5000"> 
+        <input type="hidden" name="pp_TxnDateTime" id="pp_TxnDateTime">
+        <input type="hidden" name="pp_BillReference" value="Test001">
+        <input type="hidden" name="pp_Description" value="Testing for Go Live">
+        <input type="hidden" name="pp_TxnExpiryDateTime" id="pp_TxnExpiryDateTime">
+        <input type="hidden" name="pp_ReturnURL" value="https://your-website-url.com"> <input type="hidden" name="pp_SecureHash" id="pp_SecureHash">
+
+        <button type="button" onclick="startPayment()">Pay Now (Test)</button>
+    </form>
+
+    <div class="test-data">
+        <b>Use these for success:</b><br>
+        Mobile: 03123456789<br>
+        CNIC: 345678
+    </div>
+</div>
+
+<script>
+    const integritySalt = "x51w84oj8s"; // From your screenshot
+
+    function startPayment() {
+        // 1. Set DateTimes
+        const now = new Date();
+        const expiry = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        const format = d => d.toISOString().replace(/[-T:.Z]/g, "").slice(0, 14);
+        
+        document.getElementById('pp_TxnDateTime').value = format(now);
+        document.getElementById('pp_TxnExpiryDateTime').value = format(expiry);
+
+        // 2. Prepare Data for Hash
+        const form = document.getElementById('jc-form');
+        const formData = new FormData(form);
+        const data = {};
+        formData.forEach((value, key) => { data[key] = value; });
+
+        // 3. Generate Secure Hash (Alphabetical Order)
+        const sortedKeys = Object.keys(data).sort();
+        let hashString = integritySalt;
+        for (let key of sortedKeys) {
+            if (data[key] !== "") hashString += '&' + data[key];
+        }
+
+        const hash = CryptoJS.HmacSHA256(hashString, integritySalt).toString(CryptoJS.enc.Hex).toUpperCase();
+        document.getElementById('pp_SecureHash').value = hash;
+
+        // 4. Submit Form
+        form.submit();
+    }
+</script>
+
+</body>
+          </html>
+
