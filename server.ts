@@ -457,6 +457,134 @@ async function startServer() {
     }
   });
 
+  // --- Standalone Test Integration ---
+  app.get("/test-checkout", (req, res) => {
+    res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JazzCash Checkout Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f4f4f9; margin: 0; }
+        .card { background: white; padding: 40px; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); width: 100%; max-width: 400px; text-align: center; }
+        h2 { color: #d32f2f; margin-bottom: 8px; }
+        .info { font-size: 14px; color: #64748b; margin-bottom: 30px; }
+        .amount { font-size: 32px; font-weight: 900; color: #1e293b; margin: 20px 0; }
+        button { width: 100%; background: #d32f2f; color: white; border: none; padding: 18px; border-radius: 12px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
+        button:hover { background: #b71c1c; transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+        .debug { margin-top: 20px; font-size: 10px; color: #94a3b8; font-family: monospace; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>JazzCash</h2>
+        <p class="info">Sandbox Integration Test</p>
+        <div class="amount">PKR 10.00</div>
+        <p style="font-size: 12px; color: #94a3b8; margin-bottom: 30px;">Merchant ID: MC656746</p>
+        
+        <form id="jazzcash-form" method="POST" action="https://sandbox.jazzcash.com.pk/CustomerPortal/transactionmanagement/merchantform/">
+            <div id="hidden-fields"></div>
+            <button type="button" onclick="submitForm()">Pay with JazzCash</button>
+        </form>
+        <div id="debug-info" class="debug"></div>
+    </div>
+
+    <script>
+        const MerchantID = "MC656746";
+        const Password = "t42522c45t";
+        const Salt = "x51w84cg85";
+        const ReturnURL = window.location.origin + "/api/payment/test-callback";
+
+        function submitForm() {
+            const date = new Date();
+            const txnDateTime = date.toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
+            const expiryDate = new Date(date.getTime() + 3600000);
+            const txnExpiryDateTime = expiryDate.toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
+            
+            // Make TxnRefNo extremely unique to avoid "Technical Reasons" error
+            const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+            const txnRefNo = "T" + txnDateTime + randomSuffix;
+
+            const postData = {
+                pp_Version: "1.1",
+                pp_TxnType: "MWALLET",
+                pp_Language: "EN",
+                pp_MerchantID: MerchantID,
+                pp_SubMerchantID: "", // Added missing field
+                pp_Password: Password,
+                pp_TxnRefNo: txnRefNo,
+                pp_Amount: "1000",
+                pp_TxnCurrency: "PKR",
+                pp_TxnDateTime: txnDateTime,
+                pp_BillReference: "bill123",
+                pp_Description: "Test Transaction",
+                pp_TxnExpiryDateTime: txnExpiryDateTime,
+                pp_ReturnURL: ReturnURL,
+                pp_SecureHash: "",
+                pp_MPay_Language: "EN" // Added missing field
+            };
+
+            const sortedKeys = Object.keys(postData).sort();
+            let hashString = Salt + "&";
+            for (const key of sortedKeys) {
+                if (postData[key] !== "" && key !== "pp_SecureHash") {
+                    hashString += postData[key] + "&";
+                }
+            }
+            hashString = hashString.slice(0, -1);
+            postData.pp_SecureHash = CryptoJS.HmacSHA256(hashString, Salt).toString(CryptoJS.enc.Hex).toUpperCase();
+
+            document.getElementById('debug-info').innerText = "Sending Ref: " + txnRefNo;
+
+            const container = document.getElementById('hidden-fields');
+            container.innerHTML = ""; // Clear previous
+            for (const key in postData) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = postData[key];
+                container.appendChild(input);
+            }
+
+            document.getElementById('jazzcash-form').submit();
+        }
+    </script>
+</body>
+</html>
+    `);
+  });
+
+  app.post("/api/payment/test-callback", express.urlencoded({ extended: true }), (req, res) => {
+    const response = req.body;
+    const isSuccess = response.pp_ResponseCode === "000";
+
+    res.send(`
+        <html>
+            <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f8fafc; margin: 0;">
+                <div style="background: white; padding: 40px; border-radius: 32px; box-shadow: 0 20px 50px rgba(0,0,0,0.05); text-align: center; max-width: 450px; width: 90%; border: 1px solid ${isSuccess ? '#bbf7d0' : '#fecaca'};">
+                    <div style="width: 80px; height: 80px; background: ${isSuccess ? '#f0fdf4' : '#fef2f2'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+                        <span style="font-size: 40px;">${isSuccess ? '✅' : '❌'}</span>
+                    </div>
+                    <h1 style="color: ${isSuccess ? '#166534' : '#991b1b'}; margin: 0 0 12px; font-size: 24px;">${isSuccess ? 'Payment Received' : 'Payment Failed'}</h1>
+                    <p style="color: #64748b; margin-bottom: 32px; line-height: 1.6;">${response.pp_ResponseMessage}</p>
+                    
+                    ${isSuccess ? `
+                        <div style="background: #f1f5f9; padding: 20px; border-radius: 16px; margin-bottom: 32px; text-align: left;">
+                            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;">Transaction ID</div>
+                            <div style="font-family: monospace; font-size: 16px; font-weight: bold; color: #1e293b;">${response.pp_RetreivalReferenceNo || response.pp_TxnRefNo}</div>
+                        </div>
+                    ` : ''}
+                    
+                    <button onclick="window.location.href='/test-checkout'" style="width: 100%; background: #1e293b; color: white; border: none; padding: 16px; border-radius: 12px; font-weight: bold; cursor: pointer;">Back to Checkout</button>
+                </div>
+            </body>
+        </html>
+    `);
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
