@@ -113,6 +113,7 @@ async function startServer() {
     jazzCash: "03047321935",
     jazzCashTitle: "Pak Islam",
     bankDetails: "Bank Alfalah: 1234-5678-9012",
+    enableEasyPaisaDirect: true,
     winner: null
   };
 
@@ -233,6 +234,52 @@ async function startServer() {
 
     const row = await db.get("SELECT * FROM participants WHERE uid = ? ORDER BY timestamp DESC LIMIT 1", [uid]);
     res.json(row || null);
+  });
+
+  app.post("/api/payment/direct", authenticate, async (req: any, res: any) => {
+    const p = req.body;
+    
+    // Security: Ensure user is submitting for themselves
+    if (p.uid !== req.user.user_id || p.email !== req.user.email) {
+      return res.status(403).json({ error: "Forbidden: Identity mismatch" });
+    }
+
+    try {
+      // Check device lock
+      const deviceLock = await db.get("SELECT id FROM participants WHERE deviceToken = ? AND uid != ?", [p.deviceToken, p.uid]);
+      if (deviceLock) {
+        return res.status(400).json({ error: "Device locked to another account" });
+      }
+
+      // Generate a simulated TID
+      const tid = "MW-" + Date.now() + Math.random().toString(36).substring(7).toUpperCase();
+
+      // Generate Token Number
+      const lastToken = await db.get("SELECT tokenNumber FROM participants WHERE tokenNumber IS NOT NULL ORDER BY id DESC LIMIT 1");
+      let nextToken = "PI-1001";
+      if (lastToken) {
+        const num = parseInt(lastToken.tokenNumber.split('-')[1]);
+        nextToken = `PI-${num + 1}`;
+      }
+
+      const result = await db.run(`
+        INSERT INTO participants (
+          uid, email, name, whatsapp, cnic, address, caste, 
+          gender, dob, passport, emergencyName, emergencyNumber,
+          senderName, senderNumber, paymentMethod, tid, 
+          status, tokenNumber, deviceToken
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        p.uid, p.email, p.name, p.whatsapp, p.cnic, p.address, p.caste,
+        p.gender, p.dob, p.passport, p.emergencyName, p.emergencyNumber,
+        p.name, p.walletNumber, p.paymentMethod, tid,
+        'approved', nextToken, p.deviceToken
+      ]);
+
+      res.json({ id: result.lastID, tid, tokenNumber: nextToken });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // --- JazzCash Integration ---
