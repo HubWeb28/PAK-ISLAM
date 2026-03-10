@@ -257,8 +257,8 @@ const translations: Record<Language, Translation> = {
     tidDetectionError: "Please upload a clear screenshot of your payment.",
     step1: "Personal Info",
     step2: "Additional Details",
-    step3: "Sender Info",
-    step4: "Payment & Verification",
+    step3: "Payment Method",
+    step4: "Confirmation",
     senderInfo: "Your Payment Details",
     senderNameLabel: "Sender Account Name",
     senderNumberLabel: "Sender Account Number",
@@ -356,8 +356,8 @@ const translations: Record<Language, Translation> = {
     tidDetectionError: "براہ کرم اپنی ادائیگی کا واضح اسکرین شاٹ اپ لوڈ کریں۔",
     step1: "ذاتی معلومات",
     step2: "مزید تفصیلات",
-    step3: "آپ کی معلومات",
-    step4: "ادائیگی اور تصدیق",
+    step3: "ادائیگی کا طریقہ",
+    step4: "تصدیق",
     senderInfo: "آپ کی ادائیگی کی تفصیلات",
     senderNameLabel: "بھیجنے والے کا نام",
     senderNumberLabel: "بھیجنے والے کا نمبر",
@@ -1528,14 +1528,16 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
       return;
     }
 
-    if (!formData.slipImage) {
-      alert("Please upload your payment slip screenshot.");
-      return;
-    }
+    if (formData.paymentMethod !== 'jazzcash') {
+      if (!formData.slipImage) {
+        alert("Please upload your payment slip screenshot.");
+        return;
+      }
 
-    if (!formData.tid || formData.tid.length < 5) {
-      alert("Please enter a valid Transaction ID.");
-      return;
+      if (!formData.tid || formData.tid.length < 5) {
+        alert("Please enter a valid Transaction ID.");
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -1583,18 +1585,6 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
         return;
       }
 
-      if (!formData.slipImage) {
-        alert("Please upload your payment slip screenshot.");
-        setSubmitting(false);
-        return;
-      }
-
-      if (!formData.tid || formData.tid.length < 5) {
-        alert("Please enter a valid Transaction ID.");
-        setSubmitting(false);
-        return;
-      }
-
       const res = await fetch('/api/participants', {
         method: 'POST',
         headers: { 
@@ -1633,8 +1623,8 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
   const steps = [
     { id: 1, label: t.step1, icon: UserIcon },
     { id: 2, label: t.step2, icon: FileText },
-    { id: 3, label: t.step3, icon: UserIcon },
-    { id: 4, label: t.step4, icon: CreditCard }
+    { id: 3, label: t.paymentMethod, icon: CreditCard },
+    { id: 4, label: t.step4, icon: ShieldCheck }
   ];
 
   return (
@@ -1855,71 +1845,8 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="space-y-4"
-          >
-            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 mb-6">
-              <p className="text-sm text-emerald-800 font-medium flex items-center gap-2">
-                <Info className="w-4 h-4" />
-                Please provide your account details from which you will send the payment.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                <UserIcon className="w-4 h-4 text-emerald-600" />
-                {t.senderNameLabel}
-              </label>
-              <input 
-                required
-                type="text" 
-                value={formData.senderName}
-                onChange={e => setFormData({...formData, senderName: e.target.value})}
-                className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                <Hash className="w-4 h-4 text-emerald-600" />
-                {t.senderNumberLabel}
-              </label>
-              <input 
-                required
-                type="text" 
-                inputMode="numeric"
-                pattern="[0-9]*"
-                placeholder="Account Number"
-                value={formData.senderNumber}
-                onChange={e => {
-                  const val = e.target.value.replace(/\D/g, '');
-                  setFormData({...formData, senderNumber: val});
-                }}
-                className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-              />
-            </div>
-            <div className="flex gap-3">
-              <button type="button" onClick={() => setStep(2)} className="flex-1 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50">Back</button>
-              <button type="submit" className="flex-[2] bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 flex items-center justify-center gap-2">
-                {t.step4}
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-
-        {step === 4 && (
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
             className="space-y-6"
           >
-            {/* Warning Banner */}
-            <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <p className="text-sm font-bold text-amber-900">{t.paymentWarning}</p>
-                <p className="text-xs text-amber-700">{t.paymentNotice}</p>
-              </div>
-            </div>
-
             <div className="space-y-4">
               <label className="text-sm font-bold text-slate-700">{t.paymentMethod}</label>
               <div className="grid grid-cols-1 gap-3">
@@ -1947,6 +1874,31 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
               </div>
             </div>
 
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setStep(2)} className="flex-1 border border-slate-200 py-4 rounded-xl font-bold hover:bg-slate-50">Back</button>
+              <button type="button" onClick={() => setStep(4)} className="flex-[2] bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 flex items-center justify-center gap-2">
+                Continue
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {step === 4 && (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-6"
+          >
+            {/* Warning Banner */}
+            <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-xl flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-amber-900">{t.paymentWarning}</p>
+                <p className="text-xs text-amber-700">{t.paymentNotice}</p>
+              </div>
+            </div>
+
             <div className="bg-emerald-900 text-white p-6 rounded-3xl space-y-4 shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
               <div className="relative z-10 space-y-3">
@@ -1964,8 +1916,8 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
                 )}
                 {formData.paymentMethod === 'jazzcash' && (
                   <div>
-                    <p className="text-2xl font-bold tracking-tight">{settings.jazzCash}</p>
-                    <p className="text-sm text-emerald-200 opacity-80">{settings.jazzCashTitle}</p>
+                    <p className="text-2xl font-bold tracking-tight">Automated Payment</p>
+                    <p className="text-sm text-emerald-200 opacity-80">Pay directly via JazzCash App/Wallet</p>
                   </div>
                 )}
                 {formData.paymentMethod === 'bank' && (
@@ -1974,8 +1926,40 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
               </div>
             </div>
 
-            {formData.paymentMethod !== 'jazzcash' && (
+            {formData.paymentMethod !== 'jazzcash' ? (
               <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                    <UserIcon className="w-4 h-4 text-emerald-600" />
+                    {t.senderNameLabel}
+                  </label>
+                  <input 
+                    required
+                    type="text" 
+                    value={formData.senderName}
+                    onChange={e => setFormData({...formData, senderName: e.target.value})}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                    <Hash className="w-4 h-4 text-emerald-600" />
+                    {t.senderNumberLabel}
+                  </label>
+                  <input 
+                    required
+                    type="text" 
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="Account Number"
+                    value={formData.senderNumber}
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setFormData({...formData, senderNumber: val});
+                    }}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
                     <Hash className="w-4 h-4 text-emerald-600" />
@@ -2025,6 +2009,16 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
                   </div>
                 )}
               </div>
+            ) : (
+              <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 text-center space-y-4">
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
+                  <ShieldCheck className="w-8 h-8" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-bold text-emerald-900">Automated Verification</h4>
+                  <p className="text-xs text-emerald-700">You will be redirected to JazzCash secure portal to complete payment. Your participation will be approved instantly.</p>
+                </div>
+              </div>
             )}
 
             <div className="space-y-4">
@@ -2054,8 +2048,8 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
                 disabled={submitting || uploading}
                 className="flex-[2] bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
               >
-                {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
-                {t.submit}
+                {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : (formData.paymentMethod === 'jazzcash' ? "Pay Now & Submit" : t.submit)}
+                {!submitting && <ArrowRight className="w-5 h-5" />}
               </button>
             </div>
           </motion.div>
