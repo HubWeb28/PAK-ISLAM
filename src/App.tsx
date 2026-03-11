@@ -1508,7 +1508,7 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
     emergencyNumber: '',
     senderName: '',
     senderNumber: '',
-    paymentMethod: 'easypaisa',
+    paymentMethod: 'jazzcash',
     walletNumber: '',
     tid: '',
     amount: '',
@@ -1552,21 +1552,9 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
       return;
     }
 
-    if (formData.paymentMethod === 'bank' || (formData.paymentMethod === 'easypaisa' && !settings.enableEasyPaisaDirect)) {
-      if (!formData.slipImage) {
-        alert("Please upload your payment slip screenshot.");
-        return;
-      }
-
-      if (!formData.tid || formData.tid.length < 5) {
-        alert("Please enter a valid Transaction ID.");
-        return;
-      }
-    } else {
-      if (!formData.walletNumber || formData.walletNumber.length < 11) {
-        alert("Please enter a valid mobile wallet number.");
-        return;
-      }
+    if (!formData.walletNumber || formData.walletNumber.length < 11) {
+      alert("Please enter a valid mobile wallet number.");
+      return;
     }
 
     setSubmitting(true);
@@ -1883,10 +1871,8 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
               <label className="text-sm font-bold text-slate-700">{t.paymentMethod}</label>
               <div className="grid grid-cols-1 gap-3">
                 {[
-                  { id: 'easypaisa', label: t.easyPaisa, icon: CreditCard, enabled: settings.enableEasyPaisa !== false },
-                  { id: 'jazzcash', label: t.jazzCash, icon: CreditCard, enabled: settings.enableJazzCash !== false },
-                  { id: 'bank', label: t.bankTransfer, icon: CreditCard, enabled: settings.enableBank !== false }
-                ].filter(m => m.enabled).map(method => (
+                  { id: 'jazzcash', label: t.jazzCash, icon: CreditCard, enabled: true },
+                ].map(method => (
                   <button
                     key={method.id}
                     type="button"
@@ -1940,21 +1926,10 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
                     REQUIRED: 50 RS
                   </div>
                 </div>
-                {formData.paymentMethod === 'easypaisa' && (
-                  <div>
-                    <p className="text-2xl font-bold tracking-tight">{settings.easyPaisa}</p>
-                    <p className="text-sm text-emerald-200 opacity-80">{settings.easyPaisaTitle}</p>
-                  </div>
-                )}
-                {formData.paymentMethod === 'jazzcash' && (
-                  <div>
-                    <p className="text-2xl font-bold tracking-tight">Direct Wallet Payment</p>
-                    <p className="text-sm text-emerald-200 opacity-80">Enter your number below to receive MPIN request</p>
-                  </div>
-                )}
-                {formData.paymentMethod === 'bank' && (
-                  <p className="text-sm font-medium leading-relaxed">{settings.bankDetails}</p>
-                )}
+                <div>
+                  <p className="text-2xl font-bold tracking-tight">Direct Wallet Payment</p>
+                  <p className="text-sm text-emerald-200 opacity-80">Enter your number below to receive MPIN request</p>
+                </div>
               </div>
             </div>
 
@@ -1974,113 +1949,28 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
             )}
 
             {paymentStep === 'form' && (
-              <>
-                {(formData.paymentMethod === 'jazzcash' || (formData.paymentMethod === 'easypaisa' && settings.enableEasyPaisaDirect)) ? (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-emerald-600" />
-                        {(t as any).accountNumberLabel}
-                      </label>
-                      <input 
-                        required
-                        type="text" 
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        placeholder="03xxxxxxxxx"
-                        value={formData.walletNumber}
-                        onChange={e => {
-                          const val = e.target.value.replace(/\D/g, '');
-                          if (val.length <= 11) setFormData({...formData, walletNumber: val});
-                        }}
-                        className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      />
-                    </div>
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                      <Phone className="w-4 h-4 text-emerald-600" />
+                      {(t as any).accountNumberLabel}
+                    </label>
+                    <input 
+                      required
+                      type="text" 
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="03xxxxxxxxx"
+                      value={formData.walletNumber}
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        if (val.length <= 11) setFormData({...formData, walletNumber: val});
+                      }}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    />
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                        <UserIcon className="w-4 h-4 text-emerald-600" />
-                        {t.senderNameLabel}
-                      </label>
-                      <input 
-                        required
-                        type="text" 
-                        value={formData.senderName}
-                        onChange={e => setFormData({...formData, senderName: e.target.value})}
-                        className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                        <Hash className="w-4 h-4 text-emerald-600" />
-                        {t.senderNumberLabel}
-                      </label>
-                      <input 
-                        required
-                        type="text" 
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        placeholder="Account Number"
-                        value={formData.senderNumber}
-                        onChange={e => {
-                          const val = e.target.value.replace(/\D/g, '');
-                          setFormData({...formData, senderNumber: val});
-                        }}
-                        className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                        <Hash className="w-4 h-4 text-emerald-600" />
-                        {t.tidLabel}
-                      </label>
-                      <label className="cursor-pointer bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-bold hover:bg-emerald-200 transition-colors flex items-center gap-1">
-                        <Camera className="w-3 h-3" />
-                        {formData.slipImage ? "Slip Uploaded" : t.uploadSlip}
-                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                      </label>
-                    </div>
-                    
-                    <div className="relative">
-                      <input 
-                        required
-                        type="text" 
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        placeholder="Enter TID manually"
-                        value={formData.tid}
-                        onChange={e => {
-                          const val = e.target.value.replace(/\D/g, '');
-                          setFormData({...formData, tid: val});
-                        }}
-                        className={cn(
-                          "w-full border rounded-xl px-4 py-4 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono text-lg",
-                          formData.slipImage ? "border-emerald-500 bg-emerald-50" : "border-slate-200"
-                        )}
-                      />
-                      {uploading && (
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-xs text-emerald-600 font-bold">
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          Uploading...
-                        </div>
-                      )}
-                    </div>
-                    
-                    {formData.slipImage && (
-                      <div className="space-y-2">
-                        <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1"><Check className="w-3 h-3" /> Slip uploaded successfully!</p>
-                        <div className="w-full h-32 rounded-xl overflow-hidden border border-emerald-100 bg-emerald-50 relative">
-                          <img src={formData.slipImage} alt="Slip Preview" className="w-full h-full object-cover opacity-50" />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="bg-white/80 px-3 py-1 rounded-full text-[10px] font-bold text-emerald-700 shadow-sm">Preview Saved</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                </div>
 
                 <div className="space-y-4">
                   <label className="flex items-start gap-3 cursor-pointer group">
@@ -2110,7 +2000,7 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
                       disabled={submitting || uploading}
                       className="flex-[2] bg-emerald-600 text-white py-4 rounded-xl font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
                     >
-                      {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : (formData.paymentMethod === 'jazzcash' || (formData.paymentMethod === 'easypaisa' && settings.enableEasyPaisaDirect) ? "Pay Now & Submit" : t.submit)}
+                      {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : "Pay Now & Submit"}
                       {!submitting && <ArrowRight className="w-5 h-5" />}
                     </button>
                   </div>
@@ -2167,7 +2057,7 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
                     </button>
                   )}
                 </div>
-              </>
+              </div>
             )}
           </motion.div>
         )}
