@@ -1564,7 +1564,7 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
 
       if (formData.paymentMethod === 'jazzcash') {
         setPaymentStep('processing');
-        const res = await fetch('/.netlify/functions/ussd-push', {
+        const res = await fetch('/api/ussd-push', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json'
@@ -1582,9 +1582,15 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
           })
         });
 
-        const data = await res.json();
+        let data;
+        try {
+          data = await res.json();
+        } catch (jsonErr) {
+          throw new Error("Server returned an invalid response. Please check Vercel logs.");
+        }
+
         if (!res.ok) {
-          alert(data.error || "Payment initiation failed. Please ensure JazzCash credentials are set in App Settings.");
+          alert(data.error || "Payment initiation failed. Please ensure JazzCash credentials are set in Vercel Environment Variables.");
           setPaymentStep('form');
           setSubmitting(false);
           return;
@@ -2017,33 +2023,22 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
                         setSubmitting(true);
                         try {
                           const token = await user.getIdToken();
-                          const initRes = await fetch('/api/payment/initiate', {
+                          const initRes = await fetch('/api/ussd-push', {
                             method: 'POST',
                             headers: { 
-                              'Content-Type': 'application/json',
-                              'Authorization': `Bearer ${token}`
+                              'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
                               amount: 50,
-                              walletNumber: formData.walletNumber,
+                              mobileNumber: formData.walletNumber,
+                              uid: user.uid,
                               participantData: { ...formData, deviceToken }
                             })
                           });
                           const initData = await initRes.json();
                           if (!initRes.ok) throw new Error(initData.error);
-
-                          const simRes = await fetch('/api/payment/simulate-success', {
-                            method: 'POST',
-                            headers: { 
-                              'Content-Type': 'application/json',
-                              'Authorization': `Bearer ${token}`
-                            },
-                            body: JSON.stringify({ txnRefNo: initData.postData.pp_TxnRefNo })
-                          });
-                          const simData = await simRes.json();
-                          if (!simRes.ok) throw new Error(simData.error);
                           
-                          alert("Test Transaction Successful! Token Number: " + simData.tokenNumber);
+                          alert("Test Transaction Initiated! Please check your phone for MPIN popup.");
                           onSuccess();
                         } catch (err: any) {
                           alert("Simulation failed: " + err.message);

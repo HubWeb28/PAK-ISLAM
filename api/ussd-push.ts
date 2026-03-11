@@ -1,4 +1,4 @@
-import { Handler } from "@netlify/functions";
+import { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from "crypto";
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -12,6 +12,7 @@ const firebaseConfig = {
   appId: "1:142412601649:web:92b052ba6f744508263810"
 };
 
+// Initialize Firebase once
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -36,31 +37,35 @@ function calculateJazzCashHash(payload: any) {
     .toUpperCase();
 }
 
-export const handler: Handler = async (event) => {
-  if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: "Method Not Allowed" };
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   try {
-    const { amount, mobileNumber, cnic, email, uid, participantData } = JSON.parse(event.body || "{}");
+    const { amount, mobileNumber, cnic, email, uid, participantData } = req.body;
 
     if (!amount || !mobileNumber || !uid) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Amount, Mobile Number, and UID are required" }),
-      };
+      return res.status(400).json({ error: "Amount, Mobile Number, and UID are required" });
     }
 
     // Save participant data as pending first
     if (participantData) {
-      await setDoc(doc(db, 'participants', uid), {
-        ...participantData,
-        uid,
-        email,
-        paymentMethod: 'jazzcash',
-        status: 'pending',
-        timestamp: serverTimestamp(),
-      }, { merge: true });
+      try {
+        await setDoc(doc(db, 'participants', uid), {
+          ...participantData,
+          uid,
+          email,
+          paymentMethod: 'jazzcash',
+          status: 'pending',
+          timestamp: serverTimestamp(),
+        }, { merge: true });
+      } catch (fsError: any) {
+        console.error("Firestore Error:", fsError);
+        // Continue even if firestore fails, or return error?
+        // Let's return error to be safe
+        return res.status(500).json({ error: "Failed to save participant data: " + fsError.message });
+      }
     }
 
     const txnDateTime = new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14);
@@ -84,7 +89,7 @@ export const handler: Handler = async (event) => {
       pp_BillReference: uid,
       pp_Description: "JazzCash Mobile Wallet Payment",
       pp_TxnExpiryDateTime: txnExpiryDateTime,
-      pp_ReturnURL: `${APP_URL}/api/payment/callback`,
+      pp_ReturnURL: `${APP_URL}/api/callback`,
       pp_MobileNumber: mobileNumber,
       pp_CNIC: cnic || "",
       ppmpf_1: mobileNumber,
@@ -103,16 +108,9 @@ export const handler: Handler = async (event) => {
     });
 
     const result: any = await response.json();
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify(result),
-    };
+    return res.status(200).json(result);
   } catch (error: any) {
     console.error("USSD Push Error:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: error.message }),
-    };
+    return res.status(500).json({ error: error.message });
   }
-};
+}

@@ -1,4 +1,4 @@
-import { Handler } from "@netlify/functions";
+import { VercelRequest, VercelResponse } from '@vercel/node';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import crypto from "crypto";
@@ -35,25 +35,24 @@ function verifyJazzCashHash(payload: any) {
   return calculatedHash === receivedHash;
 }
 
-export const handler: Handler = async (event) => {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   let data: any = {};
   try {
-    if (event.httpMethod === "POST") {
-      if (event.headers["content-type"] === "application/x-www-form-urlencoded") {
-        const params = new URLSearchParams(event.body || "");
-        data = Object.fromEntries(params.entries());
+    if (req.method === "POST") {
+      if (req.headers["content-type"] === "application/x-www-form-urlencoded") {
+        data = req.body;
       } else {
-        data = JSON.parse(event.body || "{}");
+        data = req.body;
       }
     } else {
-      data = event.queryStringParameters || {};
+      data = req.query;
     }
 
     console.log("JazzCash Callback Received:", data);
 
     if (!verifyJazzCashHash(data)) {
       console.error("Hash verification failed");
-      return { statusCode: 400, body: "Invalid Hash" };
+      return res.status(400).send("Invalid Hash");
     }
 
     const responseCode = data.pp_ResponseCode;
@@ -76,15 +75,9 @@ export const handler: Handler = async (event) => {
     }
 
     const APP_URL = process.env.APP_URL || "";
-    return {
-      statusCode: 302,
-      headers: {
-        Location: `${APP_URL}/?payment=success&tid=${txnRefNo}`,
-      },
-      body: "",
-    };
+    return res.redirect(`${APP_URL}/?payment=success&tid=${txnRefNo}`);
   } catch (error: any) {
     console.error("Callback Error:", error);
-    return { statusCode: 500, body: error.message };
+    return res.status(500).send(error.message);
   }
-};
+}
