@@ -1564,17 +1564,17 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
 
       if (formData.paymentMethod === 'jazzcash') {
         setPaymentStep('processing');
-        const res = await fetch('/api/payment/ussd-push', {
+        const res = await fetch('/.netlify/functions/ussd-push', {
           method: 'POST',
           headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             amount: 50,
             mobileNumber: formData.walletNumber,
             cnic: formData.cnic.replace(/-/g, ""),
             email: user.email,
+            uid: user.uid,
             participantData: {
               ...formData,
               deviceToken
