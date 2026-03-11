@@ -1,16 +1,21 @@
 import { Handler } from "@netlify/functions";
-import admin from "firebase-admin";
+import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import crypto from "crypto";
 
-const FIREBASE_PROJECT_ID = 'pak-islam-ef6c8';
-const JAZZCASH_INTEGRITY_SALT = process.env.JAZZCASH_INTEGRITY_SALT || "x51w84cg85";
+const firebaseConfig = {
+  apiKey: "AIzaSyBASkTgAJ7FvM0T9qZUeXOcchgniXCSSGM",
+  authDomain: "pak-islam-ef6c8.firebaseapp.com",
+  projectId: "pak-islam-ef6c8",
+  storageBucket: "pak-islam-ef6c8.firebasestorage.app",
+  messagingSenderId: "142412601649",
+  appId: "1:142412601649:web:92b052ba6f744508263810"
+};
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    projectId: FIREBASE_PROJECT_ID,
-  });
-}
-const firestore = admin.firestore();
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const JAZZCASH_INTEGRITY_SALT = process.env.JAZZCASH_INTEGRITY_SALT || "x51w84cg85";
 
 function verifyJazzCashHash(payload: any) {
   const receivedHash = payload.pp_SecureHash;
@@ -31,7 +36,6 @@ function verifyJazzCashHash(payload: any) {
 }
 
 export const handler: Handler = async (event) => {
-  // JazzCash sends callback as POST with form-encoded data or JSON
   let data: any = {};
   try {
     if (event.httpMethod === "POST") {
@@ -55,16 +59,15 @@ export const handler: Handler = async (event) => {
     const responseCode = data.pp_ResponseCode;
     const responseMessage = data.pp_ResponseMessage;
     const txnRefNo = data.pp_TxnRefNo;
-    const uid = data.pp_BillReference; // We stored UID in BillReference
+    const uid = data.pp_BillReference;
 
     if (responseCode === "000") {
-      // Success! Update Firestore
       if (uid) {
-        await firestore.collection("participants").doc(uid).set({
+        await setDoc(doc(db, 'participants', uid), {
           status: "Approved",
           paymentMethod: "JazzCash Mobile Wallet",
           tid: txnRefNo,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: serverTimestamp(),
         }, { merge: true });
         console.log(`Participant ${uid} approved via callback`);
       }
@@ -72,7 +75,6 @@ export const handler: Handler = async (event) => {
       console.log(`Payment failed for ${uid}: ${responseMessage}`);
     }
 
-    // Redirect user back to the app or show success
     const APP_URL = process.env.APP_URL || "";
     return {
       statusCode: 302,

@@ -1,21 +1,25 @@
 import { Handler } from "@netlify/functions";
 import crypto from "crypto";
-import fetch from "node-fetch";
-import admin from "firebase-admin";
+import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-const FIREBASE_PROJECT_ID = 'pak-islam-ef6c8';
+const firebaseConfig = {
+  apiKey: "AIzaSyBASkTgAJ7FvM0T9qZUeXOcchgniXCSSGM",
+  authDomain: "pak-islam-ef6c8.firebaseapp.com",
+  projectId: "pak-islam-ef6c8",
+  storageBucket: "pak-islam-ef6c8.firebasestorage.app",
+  messagingSenderId: "142412601649",
+  appId: "1:142412601649:web:92b052ba6f744508263810"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 const JAZZCASH_MERCHANT_ID = process.env.JAZZCASH_MERCHANT_ID || "MC656746";
 const JAZZCASH_PASSWORD = process.env.JAZZCASH_PASSWORD || "t42522c45t";
 const JAZZCASH_INTEGRITY_SALT = process.env.JAZZCASH_INTEGRITY_SALT || "x51w84cg85";
 const JAZZCASH_API_URL = process.env.JAZZCASH_API_URL || "https://sandbox.jazzcash.com.pk/ApplicationAPI/API/2.0/Purchase/DoTransaction";
 const APP_URL = process.env.APP_URL || "";
-
-if (!admin.apps.length) {
-  admin.initializeApp({
-    projectId: FIREBASE_PROJECT_ID,
-  });
-}
-const firestore = admin.firestore();
 
 function calculateJazzCashHash(payload: any) {
   const sortedKeys = Object.keys(payload).sort();
@@ -49,13 +53,13 @@ export const handler: Handler = async (event) => {
 
     // Save participant data as pending first
     if (participantData) {
-      await firestore.collection('participants').doc(uid).set({
+      await setDoc(doc(db, 'participants', uid), {
         ...participantData,
         uid,
         email,
         paymentMethod: 'jazzcash',
         status: 'pending',
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: serverTimestamp(),
       }, { merge: true });
     }
 
