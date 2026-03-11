@@ -606,19 +606,21 @@ export default function App() {
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch('/api/stats');
+      if (!res.ok) throw new Error(`Stats fetch failed: ${res.status}`);
       const data = await res.json();
       
       const res2 = await fetch('/api/participants/approved-tokens');
+      if (!res2.ok) throw new Error(`Tokens fetch failed: ${res2.status}`);
       const approved = await res2.json();
       
       setStats({
-        total: data.total + 2000 + (data.approved * 10),
-        approved: data.approved
+        total: (data.total || 0) + 2000 + ((data.approved || 0) * 10),
+        approved: data.approved || 0
       });
       if (Array.isArray(approved)) {
         setApprovedTokens(approved);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Fetch stats error:", error);
     }
   }, []);
@@ -631,7 +633,13 @@ export default function App() {
       localStorage.setItem('deviceToken', token);
     }
     setDeviceToken(token);
-    fetchStats();
+    
+    // Add a small delay to ensure server is ready
+    const timeout = setTimeout(() => {
+      fetchStats();
+    }, 1000);
+    
+    return () => clearTimeout(timeout);
   }, [fetchStats]);
 
   // Auth Listener
@@ -1567,7 +1575,8 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
       const token = await user.getIdToken();
 
       if (formData.paymentMethod === 'jazzcash') {
-        const res = await fetch('/api/payment/initiate', {
+        setPaymentStep('processing');
+        const res = await fetch('/api/payment/ussd-push', {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -1575,7 +1584,9 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
           },
           body: JSON.stringify({
             amount: 50,
-            walletNumber: formData.walletNumber,
+            mobileNumber: formData.walletNumber,
+            cnic: formData.cnic.replace(/-/g, ""),
+            email: user.email,
             participantData: {
               ...formData,
               deviceToken
@@ -1586,26 +1597,23 @@ function ApplyForm({ t, lang, user, deviceToken, settings, onSuccess }: any) {
         const data = await res.json();
         if (!res.ok) {
           alert(data.error || "Payment initiation failed. Please ensure JazzCash credentials are set in App Settings.");
-          setSubmitting(false);
           setPaymentStep('form');
+          setSubmitting(false);
           return;
         }
 
-        // Create a hidden form and submit it to JazzCash
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = data.apiUrl;
-
-        for (const key in data.postData) {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = key;
-          input.value = data.postData[key];
-          form.appendChild(input);
+        if (data.pp_ResponseCode === "000") {
+          setPaymentStep('success');
+          // The callback will handle actual approval, but we show success for initiation
+          alert(lang === 'ur' 
+            ? "براہ کرم اپنے موبائل فون پر JazzCash MPIN پاپ اپ چیک کریں اور ادائیگی مکمل کرنے کے لیے اپنا پن درج کریں۔" 
+            : "Please check your mobile phone for the JazzCash MPIN popup and enter your PIN to complete the payment.");
+          onSuccess();
+        } else {
+          alert(`JazzCash Error: ${data.pp_ResponseMessage}`);
+          setPaymentStep('form');
+          setSubmitting(false);
         }
-
-        document.body.appendChild(form);
-        form.submit();
         return;
       }
 
